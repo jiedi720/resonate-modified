@@ -81,10 +81,12 @@ import com.resonate.player.ui.navigation.EqualizerRoute
 import com.resonate.player.ui.navigation.FolderDetailRoute
 import com.resonate.player.ui.navigation.GenreDetailRoute
 import com.resonate.player.ui.navigation.LibrarySettingsRoute
+import com.resonate.player.ui.navigation.PlaybackSettingsRoute
 import com.resonate.player.ui.navigation.HomeRoute
 import com.resonate.player.ui.navigation.LibraryRoute
 import com.resonate.player.ui.navigation.PlaylistDetailRoute
 import com.resonate.player.ui.navigation.SearchRoute
+import com.resonate.player.ui.navigation.StatsRoute
 import com.resonate.player.ui.navigation.YouRoute
 import com.resonate.player.ui.nowplaying.NowPlayingScreen
 import com.resonate.player.ui.player.PlaybackViewModel
@@ -95,6 +97,7 @@ import com.resonate.player.ui.settings.AboutScreen
 import com.resonate.player.ui.settings.AppearanceSettingsScreen
 import com.resonate.player.ui.settings.EqualizerScreen
 import com.resonate.player.ui.settings.LibrarySettingsScreen
+import com.resonate.player.ui.settings.PlaybackSettingsScreen
 import com.resonate.player.ui.settings.YouScreen
 import com.resonate.player.ui.theme.ChromaEngine
 import com.resonate.player.ui.theme.LocalResonateColors
@@ -210,8 +213,18 @@ private fun MainScaffold(
     beforePlay: () -> Unit,
     onExpandPlayer: () -> Unit,
 ) {
+    // §4: one-line snackbar when a bad file gets skipped.
+    val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
+    val errorMessage = stringResource(R.string.playback_error)
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        playbackViewModel.playbackError.collect {
+            snackbarHostState.showSnackbar(errorMessage)
+        }
+    }
+
     Scaffold(
         containerColor = ResonateTheme.colors.ink,
+        snackbarHost = { androidx.compose.material3.SnackbarHost(snackbarHostState) },
         bottomBar = {
             Column(
                 modifier = Modifier
@@ -264,10 +277,16 @@ private fun MainScaffold(
                         beforePlay()
                         playbackViewModel.shuffleAll()
                     },
+                    onSongClick = { song ->
+                        beforePlay()
+                        playbackViewModel.playFromAllSongs(song.id)
+                    },
                 )
             }
             composable<LibraryRoute> {
-                var addToSong by remember { mutableStateOf<com.resonate.player.domain.model.Song?>(null) }
+                var addSelection by remember {
+                    mutableStateOf<List<com.resonate.player.domain.model.Song>>(emptyList())
+                }
                 LibraryScreen(
                     onAlbumClick = { navController.navigate(AlbumDetailRoute(it)) },
                     onArtistClick = { navController.navigate(ArtistDetailRoute(it)) },
@@ -281,13 +300,13 @@ private fun MainScaffold(
                         beforePlay()
                         playbackViewModel.playFolder(song.folderId, song.id)
                     },
-                    onSongLongPress = { addToSong = it },
+                    onAddSelection = { addSelection = it },
                 )
-                addToSong?.let { song ->
+                if (addSelection.isNotEmpty()) {
                     AddToSheet(
-                        song = song,
+                        songs = addSelection,
                         onAddToQueue = playbackViewModel::addToQueue,
-                        onDismiss = { addToSong = null },
+                        onDismiss = { addSelection = emptyList() },
                     )
                 }
             }
@@ -306,15 +325,23 @@ private fun MainScaffold(
                 YouScreen(
                     onAppearance = { navController.navigate(AppearanceSettingsRoute) },
                     onLibrary = { navController.navigate(LibrarySettingsRoute) },
+                    onPlayback = { navController.navigate(PlaybackSettingsRoute) },
                     onEqualizer = { navController.navigate(EqualizerRoute) },
                     onAbout = { navController.navigate(AboutRoute) },
+                    onStats = { navController.navigate(StatsRoute) },
                 )
+            }
+            composable<StatsRoute> {
+                com.resonate.player.ui.stats.StatsScreen(onBack = { navController.popBackStack() })
             }
             composable<AppearanceSettingsRoute> {
                 AppearanceSettingsScreen(onBack = { navController.popBackStack() })
             }
             composable<LibrarySettingsRoute> {
                 LibrarySettingsScreen(onBack = { navController.popBackStack() })
+            }
+            composable<PlaybackSettingsRoute> {
+                PlaybackSettingsScreen(onBack = { navController.popBackStack() })
             }
             composable<EqualizerRoute> {
                 EqualizerScreen(onBack = { navController.popBackStack() })

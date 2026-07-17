@@ -1,6 +1,7 @@
 package com.resonate.player.ui.nowplaying
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Pause
@@ -154,17 +156,32 @@ fun NowPlayingScreen(
 
         Spacer(modifier = Modifier.weight(0.5f))
 
-        // Title (§1.3: never one-line-truncate on Now Playing — two lines)
-        Text(
-            text = track.title,
-            style = ResonateTheme.type.displayLg,
-            color = colors.bone,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-        )
+        // §1.3: wrap to two lines, marquee only if it still overflows.
+        var titleOverflows by remember(track.title) { mutableStateOf(false) }
+        if (titleOverflows) {
+            Text(
+                text = track.title,
+                style = ResonateTheme.type.displayLg,
+                color = colors.bone,
+                maxLines = 1,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .basicMarquee(iterations = Int.MAX_VALUE),
+            )
+        } else {
+            Text(
+                text = track.title,
+                style = ResonateTheme.type.displayLg,
+                color = colors.bone,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                onTextLayout = { if (it.hasVisualOverflow) titleOverflows = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+            )
+        }
         Text(
             text = listOf(track.artist, track.album)
                 .filter { it.isNotBlank() }
@@ -286,11 +303,13 @@ fun NowPlayingScreen(
             )
         }
 
-        // Secondary row (§2.4): favorite · sleep timer · speed · queue
+        // Secondary row (§2.4): favorite · lyrics (if embedded) · sleep · speed · queue
         var queueOpen by remember { mutableStateOf(false) }
         var sleepOpen by remember { mutableStateOf(false) }
         var speedOpen by remember { mutableStateOf(false) }
+        var lyricsOpen by remember { mutableStateOf(false) }
         val sleepEndsAt by viewModel.sleepEndsAt.collectAsStateWithLifecycle()
+        val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -303,6 +322,15 @@ fun NowPlayingScreen(
                     contentDescription = stringResource(R.string.cd_favorite),
                     tint = if (isFavorite) colors.accent else colors.muted,
                 )
+            }
+            if (lyrics != null) {
+                IconButton(onClick = { lyricsOpen = true }) {
+                    Icon(
+                        imageVector = Icons.Filled.Lyrics,
+                        contentDescription = stringResource(R.string.cd_lyrics),
+                        tint = colors.muted,
+                    )
+                }
             }
             IconButton(onClick = { sleepOpen = true }) {
                 Icon(
@@ -337,6 +365,15 @@ fun NowPlayingScreen(
         }
         if (speedOpen) {
             SpeedSheet(viewModel = viewModel, onDismiss = { speedOpen = false })
+        }
+        lyrics?.let { current ->
+            if (lyricsOpen) {
+                LyricsSheet(
+                    viewModel = viewModel,
+                    lyrics = current,
+                    onDismiss = { lyricsOpen = false },
+                )
+            }
         }
     }
 }

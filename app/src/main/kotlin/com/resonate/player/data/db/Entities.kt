@@ -101,3 +101,19 @@ data class QueueItemEntity(
     @PrimaryKey val position: Int,
     val songId: Long,
 )
+
+/** Wave 2: long audio (>20 min) resumes where you left off. Keyed by song. */
+@Entity(tableName = "long_positions")
+data class LongPositionEntity(
+    @PrimaryKey val songId: Long,
+    val positionMs: Long,
+    val updatedAt: Long,
+)
+
+/** Wave 3: individual play events power time-windowed stats ("this month"). */
+@Entity(tableName = "play_events", indices = [Index("playedAt"), Index("songId")])
+data class PlayEventEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long,
+    val songId: Long,
+    val playedAt: Long,
+)

@@ -64,6 +64,10 @@ class PlayerConnection @Inject constructor(
     private val _currentIndex = MutableStateFlow(0)
     val currentIndex: StateFlow<Int> = _currentIndex.asStateFlow()
 
+    /** §4: bad files are skipped by the service; the UI surfaces one line. */
+    private val _playbackError = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val playbackError: kotlinx.coroutines.flow.SharedFlow<Unit> = _playbackError
+
     private var controller: MediaController? = null
     private val controllerReady = CompletableDeferred<MediaController>()
 
@@ -110,6 +114,10 @@ class PlayerConnection @Inject constructor(
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
             controller?.let(::syncQueue)
         }
+
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            _playbackError.tryEmit(Unit)
+        }
     }
 
     private fun syncQueue(controller: MediaController) {
@@ -151,6 +159,10 @@ class PlayerConnection @Inject constructor(
 
     fun playPause() {
         controller?.let { if (it.isPlaying) it.pause() else it.play() }
+    }
+
+    fun play() {
+        controller?.play()
     }
 
     fun next() {

@@ -56,11 +56,24 @@ class PlaybackService : MediaSessionService() {
     @Inject
     lateinit var prefsStore: UserPrefsStore
 
+    @Inject
+    lateinit var replayGainResolver: com.resonate.player.data.audio.ReplayGainResolver
+
+    @Inject
+    lateinit var longPositionDao: com.resonate.player.data.db.LongPositionDao
+
+    @Inject
+    lateinit var songBrowseDao: com.resonate.player.data.db.SongBrowseDao
+
+    @Inject
+    lateinit var playEventDao: com.resonate.player.data.db.PlayEventDao
+
     private var mediaSession: MediaSession? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var positionTicker: Job? = null
     private var sleepJob: Job? = null
     private var equalizerController: EqualizerController? = null
+    private var effects: PlaybackEffectsController? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -103,8 +116,21 @@ class PlaybackService : MediaSessionService() {
             .build()
 
         equalizerController = EqualizerController(prefsStore, scope).also { it.attach(player) }
+        effects = PlaybackEffectsController(
+            context = this,
+            player = player,
+            scope = scope,
+            prefsStore = prefsStore,
+            replayGainResolver = replayGainResolver,
+            longPositionDao = longPositionDao,
+            songBrowseDao = songBrowseDao,
+        ).also { it.start() }
         restoreSpeed(player)
         restoreQueue(player)
+
+        scope.launch(Dispatchers.IO) {
+            playEventDao.prune(System.currentTimeMillis() - 365L * 24 * 60 * 60 * 1000)
+        }
     }
 
     /** §2.4 speed sheet: persisted speed/pitch survives service restarts. */
@@ -148,7 +174,7 @@ class PlaybackService : MediaSessionService() {
     private fun setSleepTimer(player: Player, minutes: Int) {
         sleepJob?.cancel()
         sleepJob = null
-        player.volume = 1f
+        effects?.sleepFactor = 1f
         when {
             minutes == SLEEP_CANCEL -> Unit
 
@@ -157,7 +183,7 @@ class PlaybackService : MediaSessionService() {
                     delay(500)
                 }
                 player.pause()
-                player.volume = 1f
+                effects?.sleepFactor = 1f
             }
 
             minutes > 0 -> sleepJob = scope.launch {
@@ -165,11 +191,11 @@ class PlaybackService : MediaSessionService() {
                 delay((totalMs - FADE_MS).coerceAtLeast(0))
                 val steps = 20
                 repeat(steps) { step ->
-                    player.volume = 1f - (step + 1) / steps.toFloat()
+                    effects?.sleepFactor = 1f - (step + 1) / steps.toFloat()
                     delay(FADE_MS / steps)
                 }
                 player.pause()
-                player.volume = 1f
+                effects?.sleepFactor = 1f
             }
         }
     }
@@ -239,9 +265,14 @@ class PlaybackService : MediaSessionService() {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             persistPosition(player)
             updateWidget(player)
+            effects?.onMediaItemTransition(mediaItem, reason)
             val songId = mediaItem?.mediaId?.toLongOrNull() ?: return
             scope.launch(Dispatchers.IO) {
-                playStatDao.increment(songId, System.currentTimeMillis())
+                val now = System.currentTimeMillis()
+                playStatDao.increment(songId, now)
+                playEventDao.insert(
+                    com.resonate.player.data.db.PlayEventEntity(id = 0, songId = songId, playedAt = now)
+                )
             }
         }
 
@@ -258,12 +289,14 @@ class PlaybackService : MediaSessionService() {
                     while (isActive) {
                         delay(10_000)
                         persistPosition(player)
+                        effects?.saveCurrentLongPosition()
                     }
                 }
             } else {
                 positionTicker?.cancel()
                 positionTicker = null
                 persistPosition(player)
+                effects?.saveCurrentLongPosition()
             }
         }
 
@@ -303,6 +336,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        effects?.release()
         equalizerController?.release()
         mediaSession?.run {
             player.release()

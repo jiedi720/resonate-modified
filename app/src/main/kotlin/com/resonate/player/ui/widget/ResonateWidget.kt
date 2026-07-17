@@ -43,8 +43,11 @@ class ResonateWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = ResonateWidget()
 }
 
-/** §2.8: 4×2 home-screen widget — artwork + transport, one session behind it. */
+/** §2.8: 4×2 (artwork + transport) and 4×1 (compact) — Glance responsive. */
 class ResonateWidget : GlanceAppWidget() {
+
+    override val sizeMode: androidx.glance.appwidget.SizeMode =
+        androidx.glance.appwidget.SizeMode.Responsive(setOf(COMPACT, FULL))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
@@ -53,6 +56,7 @@ class ResonateWidget : GlanceAppWidget() {
             val artist = prefs[KEY_ARTIST].orEmpty()
             val playing = prefs[KEY_PLAYING] ?: false
             val artworkUri = prefs[KEY_ARTWORK]
+            val compact = androidx.glance.LocalSize.current.height < 100.dp
 
             Row(
                 modifier = GlanceModifier
@@ -63,7 +67,7 @@ class ResonateWidget : GlanceAppWidget() {
                     .clickable(actionStartActivity<MainActivity>()),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (artworkUri != null) {
+                if (artworkUri != null && !compact) {
                     Image(
                         provider = ImageProvider(
                             Icon.createWithContentUri(Uri.parse(artworkUri))
@@ -75,51 +79,67 @@ class ResonateWidget : GlanceAppWidget() {
                     )
                     Spacer(modifier = GlanceModifier.width(12.dp))
                 }
-                Column(modifier = GlanceModifier.defaultWeight()) {
-                    Text(
-                        text = title,
-                        style = TextStyle(
-                            color = ColorProvider(Bone),
-                            fontSize = 15.sp,
-                        ),
-                        maxLines = 1,
-                    )
-                    Text(
-                        text = artist,
-                        style = TextStyle(
-                            color = ColorProvider(Muted),
-                            fontSize = 13.sp,
-                        ),
-                        maxLines = 1,
-                    )
-                    Spacer(modifier = GlanceModifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        WidgetButton(
-                            context = context,
-                            iconRes = R.drawable.ic_widget_prev,
-                            contentDescription = context.getString(R.string.cd_previous),
-                            action = PlaybackService.ACTION_WIDGET_PREV,
+                if (compact) {
+                    // 4×1: single row — text beside transport.
+                    Column(modifier = GlanceModifier.defaultWeight()) {
+                        Text(
+                            text = title,
+                            style = TextStyle(color = ColorProvider(Bone), fontSize = 14.sp),
+                            maxLines = 1,
                         )
-                        Spacer(modifier = GlanceModifier.width(8.dp))
-                        WidgetButton(
-                            context = context,
-                            iconRes = if (playing) R.drawable.ic_widget_pause else R.drawable.ic_widget_play,
-                            contentDescription = context.getString(
-                                if (playing) R.string.cd_pause else R.string.cd_play
-                            ),
-                            action = PlaybackService.ACTION_WIDGET_PLAY_PAUSE,
-                            accent = true,
+                        Text(
+                            text = artist,
+                            style = TextStyle(color = ColorProvider(Muted), fontSize = 12.sp),
+                            maxLines = 1,
                         )
-                        Spacer(modifier = GlanceModifier.width(8.dp))
-                        WidgetButton(
-                            context = context,
-                            iconRes = R.drawable.ic_widget_next,
-                            contentDescription = context.getString(R.string.cd_next),
-                            action = PlaybackService.ACTION_WIDGET_NEXT,
+                    }
+                    TransportRow(context, playing)
+                } else {
+                    Column(modifier = GlanceModifier.defaultWeight()) {
+                        Text(
+                            text = title,
+                            style = TextStyle(color = ColorProvider(Bone), fontSize = 15.sp),
+                            maxLines = 1,
                         )
+                        Text(
+                            text = artist,
+                            style = TextStyle(color = ColorProvider(Muted), fontSize = 13.sp),
+                            maxLines = 1,
+                        )
+                        Spacer(modifier = GlanceModifier.height(8.dp))
+                        TransportRow(context, playing)
                     }
                 }
             }
+        }
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun TransportRow(context: Context, playing: Boolean) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            WidgetButton(
+                context = context,
+                iconRes = R.drawable.ic_widget_prev,
+                contentDescription = context.getString(R.string.cd_previous),
+                action = PlaybackService.ACTION_WIDGET_PREV,
+            )
+            Spacer(modifier = GlanceModifier.width(8.dp))
+            WidgetButton(
+                context = context,
+                iconRes = if (playing) R.drawable.ic_widget_pause else R.drawable.ic_widget_play,
+                contentDescription = context.getString(
+                    if (playing) R.string.cd_pause else R.string.cd_play
+                ),
+                action = PlaybackService.ACTION_WIDGET_PLAY_PAUSE,
+                accent = true,
+            )
+            Spacer(modifier = GlanceModifier.width(8.dp))
+            WidgetButton(
+                context = context,
+                iconRes = R.drawable.ic_widget_next,
+                contentDescription = context.getString(R.string.cd_next),
+                action = PlaybackService.ACTION_WIDGET_NEXT,
+            )
         }
     }
 
@@ -153,6 +173,9 @@ class ResonateWidget : GlanceAppWidget() {
         val KEY_ARTIST = stringPreferencesKey("artist")
         val KEY_PLAYING = booleanPreferencesKey("playing")
         val KEY_ARTWORK = stringPreferencesKey("artworkUri")
+
+        private val COMPACT = androidx.compose.ui.unit.DpSize(250.dp, 60.dp)
+        private val FULL = androidx.compose.ui.unit.DpSize(250.dp, 120.dp)
 
         private val Ink = Color(0xFF0D0B14)
         private val SurfaceRaised = Color(0xFF221D33)

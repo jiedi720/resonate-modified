@@ -31,6 +31,7 @@ class MediaStoreScanner @Inject constructor(
 
     suspend fun fullScan(
         minDurationSec: Int,
+        excludedFolders: List<String> = emptyList(),
         onProgress: (found: Int) -> Unit,
     ): Int = withContext(Dispatchers.IO) {
         val songs = ArrayList<SongEntity>(1024)
@@ -75,6 +76,9 @@ class MediaStoreScanner @Inject constructor(
             val idx = ColumnIndices(cursor)
             while (cursor.moveToNext()) {
                 val song = cursor.toSong(idx) ?: continue
+                // §2.7: excluded folders (and their subfolders) never enter the index.
+                val fullPath = folderPathOf(idx, cursor)
+                if (excludedFolders.any { fullPath == it || fullPath.startsWith("$it/") }) continue
                 songs += song
 
                 albums.getOrPut(song.albumId) {

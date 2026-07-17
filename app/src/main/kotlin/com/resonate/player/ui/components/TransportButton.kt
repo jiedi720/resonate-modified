@@ -1,7 +1,13 @@
 package com.resonate.player.ui.components
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -67,11 +73,21 @@ fun TransportButton(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            tint = tint,
-            modifier = Modifier.size(iconSize),
-        )
+        // Icon morph on state change (play↔pause) — scale + fade, 150ms.
+        AnimatedContent(
+            targetState = icon,
+            transitionSpec = {
+                (scaleIn(initialScale = 0.7f, animationSpec = tween(150)) + fadeIn(tween(150)))
+                    .togetherWith(scaleOut(targetScale = 0.7f, animationSpec = tween(100)) + fadeOut(tween(100)))
+            },
+            label = "iconMorph",
+        ) { target ->
+            Icon(
+                imageVector = target,
+                contentDescription = contentDescription,
+                tint = tint,
+                modifier = Modifier.size(iconSize),
+            )
+        }
     }
 }

@@ -18,8 +18,8 @@ android {
         applicationId = "com.resonate.player"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 3
+        versionName = "1.2.0"
     }
 
     buildTypes {
@@ -113,6 +113,7 @@ dependencies {
     implementation(libs.datastore)
     implementation(libs.work.runtime)
     implementation(libs.palette)
+    implementation(libs.jaudiotagger)
 
     implementation(libs.glance.appwidget)
     implementation(libs.glance.material3)

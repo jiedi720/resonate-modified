@@ -12,11 +12,24 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.outlined.Equalizer
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Storage
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.resonate.player.data.repo.BackupRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.launch
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,8 +48,25 @@ import com.resonate.player.ui.theme.ResonateTheme
 
 private data class SettingsGroup(val labelRes: Int, val icon: ImageVector)
 
+@HiltViewModel
+class BackupViewModel @Inject constructor(
+    private val repository: BackupRepository,
+) : ViewModel() {
+    fun export(target: android.net.Uri, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch { onDone(repository.export(target)) }
+    }
+
+    fun import(source: android.net.Uri, onDone: (Int?) -> Unit) {
+        viewModelScope.launch { onDone(repository.import(source)) }
+    }
+}
+
+private val statsGroup = SettingsGroup(R.string.stats_title, Icons.Outlined.Insights)
+private val exportGroup = SettingsGroup(R.string.backup_export, Icons.Outlined.FileUpload)
+private val importGroup = SettingsGroup(R.string.backup_import, Icons.Outlined.FileDownload)
 private val appearanceGroup = SettingsGroup(R.string.settings_appearance, Icons.Outlined.Palette)
 private val libraryGroup = SettingsGroup(R.string.settings_library, Icons.Outlined.LibraryMusic)
+private val playbackGroup = SettingsGroup(R.string.settings_playback, Icons.Outlined.PlayCircle)
 private val equalizerGroup = SettingsGroup(R.string.settings_equalizer, Icons.Outlined.Equalizer)
 private val storageGroup = SettingsGroup(R.string.settings_storage, Icons.Outlined.Storage)
 private val aboutGroup = SettingsGroup(R.string.settings_about, Icons.Outlined.Info)
@@ -45,12 +75,34 @@ private val aboutGroup = SettingsGroup(R.string.settings_about, Icons.Outlined.I
 fun YouScreen(
     onAppearance: () -> Unit,
     onLibrary: () -> Unit,
+    onPlayback: () -> Unit,
     onEqualizer: () -> Unit,
     onAbout: () -> Unit,
+    onStats: () -> Unit,
 ) {
     val colors = ResonateTheme.colors
     val context = LocalContext.current
     var cacheCleared by remember { mutableStateOf(false) }
+
+    val backupViewModel: BackupViewModel = hiltViewModel()
+    var backupMessage by remember { mutableStateOf<String?>(null) }
+    val exportDone = stringResource(R.string.backup_export_done)
+    val importFailed = stringResource(R.string.backup_import_failed)
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        uri?.let { backupViewModel.export(it) { ok -> backupMessage = if (ok) exportDone else importFailed } }
+    }
+    val importResultText = stringResource(R.string.backup_import_done)
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            backupViewModel.import(it) { count ->
+                backupMessage = if (count != null) importResultText.format(count) else importFailed
+            }
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -67,8 +119,10 @@ fun YouScreen(
         }
         item(key = "rows", contentType = "settings-rows") {
             Column {
+                SettingsRow(statsGroup, onClick = onStats)
                 SettingsRow(appearanceGroup, onClick = onAppearance)
                 SettingsRow(libraryGroup, onClick = onLibrary)
+                SettingsRow(playbackGroup, onClick = onPlayback)
                 SettingsRow(equalizerGroup, onClick = onEqualizer)
                 SettingsRow(
                     group = storageGroup,
@@ -84,6 +138,17 @@ fun YouScreen(
                         }
                         cacheCleared = true
                     },
+                )
+                SettingsRow(
+                    group = exportGroup,
+                    subtitle = backupMessage,
+                    chevron = false,
+                    onClick = { exportLauncher.launch("resonate-backup.json") },
+                )
+                SettingsRow(
+                    group = importGroup,
+                    chevron = false,
+                    onClick = { importLauncher.launch(arrayOf("application/json")) },
                 )
                 SettingsRow(aboutGroup, onClick = onAbout)
             }

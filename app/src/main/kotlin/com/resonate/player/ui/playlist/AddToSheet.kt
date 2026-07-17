@@ -42,8 +42,8 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddToSheet(
-    song: Song,
-    onAddToQueue: (Song) -> Unit,
+    songs: List<Song>,
+    onAddToQueue: (List<Song>) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val viewModel: PlaylistsViewModel = hiltViewModel()
@@ -51,6 +51,7 @@ fun AddToSheet(
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val colors = ResonateTheme.colors
     var createOpen by remember { mutableStateOf(false) }
+    val songIds = songs.map { it.id }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -58,7 +59,11 @@ fun AddToSheet(
     ) {
         Column(modifier = Modifier.padding(bottom = 24.dp)) {
             Text(
-                text = song.title,
+                text = if (songs.size == 1) {
+                    songs.first().title
+                } else {
+                    stringResource(R.string.songs_count, songs.size)
+                },
                 style = ResonateTheme.type.displaySm,
                 color = colors.bone,
                 maxLines = 1,
@@ -69,7 +74,7 @@ fun AddToSheet(
                 icon = { Icon(Icons.AutoMirrored.Filled.QueueMusic, null, tint = colors.muted) },
                 label = stringResource(R.string.add_to_queue),
                 onClick = {
-                    onAddToQueue(song)
+                    onAddToQueue(songs)
                     onDismiss()
                 },
             )
@@ -95,7 +100,7 @@ fun AddToSheet(
                         },
                         label = playlist.name,
                         onClick = {
-                            addViewModel.addTo(playlist.id, song.id)
+                            addViewModel.addTo(playlist.id, songIds)
                             onDismiss()
                         },
                     )
@@ -109,7 +114,7 @@ fun AddToSheet(
             title = stringResource(R.string.playlist_new),
             initial = "",
             onConfirm = { name ->
-                addViewModel.createWith(name, song.id)
+                addViewModel.createWith(name, songIds)
                 createOpen = false
                 onDismiss()
             },
@@ -150,11 +155,11 @@ private fun SheetRow(
 class AddToPlaylistViewModel @Inject constructor(
     private val repository: PlaylistRepository,
 ) : ViewModel() {
-    fun addTo(playlistId: Long, songId: Long) {
-        viewModelScope.launch { repository.addSongs(playlistId, listOf(songId)) }
+    fun addTo(playlistId: Long, songIds: List<Long>) {
+        viewModelScope.launch { repository.addSongs(playlistId, songIds) }
     }
 
-    fun createWith(name: String, songId: Long) {
-        viewModelScope.launch { repository.create(name, listOf(songId)) }
+    fun createWith(name: String, songIds: List<Long>) {
+        viewModelScope.launch { repository.create(name, songIds) }
     }
 }

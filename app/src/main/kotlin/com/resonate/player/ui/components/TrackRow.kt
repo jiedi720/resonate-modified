@@ -1,6 +1,7 @@
 package com.resonate.player.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -35,11 +36,19 @@ fun TrackRow(
     artworkUri: String? = null,
     supported: Boolean = true,
     onLongClick: (() -> Unit)? = null,
+    selected: Boolean = false,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .height(64.dp)
+            .then(
+                if (selected) {
+                    Modifier.background(com.resonate.player.ui.theme.ResonateTheme.colors.surfaceRaised)
+                } else {
+                    Modifier
+                }
+            )
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 16.dp)
             .alpha(if (supported) 1f else 0.45f),

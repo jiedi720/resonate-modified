@@ -35,11 +35,13 @@ class PlaybackViewModel @Inject constructor(
     private val playStatDao: PlayStatDao,
     private val chromaEngine: ChromaEngine,
     private val playlistRepository: com.resonate.player.data.repo.PlaylistRepository,
+    private val lyricsRepository: com.resonate.player.data.lyrics.LyricsRepository,
     private val prefsStore: UserPrefsStore,
 ) : ViewModel() {
 
     val nowPlaying: StateFlow<PlayerConnection.NowPlaying?> = connection.nowPlaying
     val isPlaying: StateFlow<Boolean> = connection.isPlaying
+    val playbackError: kotlinx.coroutines.flow.SharedFlow<Unit> = connection.playbackError
     val shuffleEnabled: StateFlow<Boolean> = connection.shuffleEnabled
     val repeatMode: StateFlow<Int> = connection.repeatMode
     val durationMs: StateFlow<Long> = connection.durationMs
@@ -91,8 +93,8 @@ class PlaybackViewModel @Inject constructor(
         playbackRepository.playPlaylist(playlistId, startIndex)
     }
 
-    fun addToQueue(song: com.resonate.player.domain.model.Song) = viewModelScope.launch {
-        playbackRepository.addToQueue(song)
+    fun addToQueue(songs: List<com.resonate.player.domain.model.Song>) = viewModelScope.launch {
+        playbackRepository.addToQueue(songs)
     }
 
     fun saveQueueAsPlaylist(name: String) = viewModelScope.launch {
@@ -116,6 +118,13 @@ class PlaybackViewModel @Inject constructor(
         }
     }
 
+    /** §2.4: lyrics icon appears only when the file actually carries lyrics. */
+    val lyrics: StateFlow<com.resonate.player.data.lyrics.Lyrics?> = connection.nowPlaying
+        .map { it?.songId }
+        .distinctUntilChanged()
+        .mapLatest { songId -> songId?.let { lyricsRepository.lyricsFor(it) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     // §2.7 sleep timer — service-side; sleepEndsAt is a local display hint
     private val _sleepEndsAt = kotlinx.coroutines.flow.MutableStateFlow<Long?>(null)
     val sleepEndsAt: StateFlow<Long?> = _sleepEndsAt
@@ -129,6 +138,11 @@ class PlaybackViewModel @Inject constructor(
         }
     }
 
+    fun playExternal(uri: android.net.Uri) = viewModelScope.launch {
+        playbackRepository.playExternal(uri)
+    }
+
+    fun play() = connection.play()
     fun playPause() = connection.playPause()
     fun next() = connection.next()
     fun previous() = connection.previous()

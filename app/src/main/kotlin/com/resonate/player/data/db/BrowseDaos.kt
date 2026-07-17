@@ -52,6 +52,25 @@ interface SongBrowseDao {
     @Query("SELECT * FROM songs WHERE isSupported != 0 ORDER BY RANDOM()")
     suspend fun allSongsShuffled(): List<SongEntity>
 
+    @Query("SELECT * FROM songs WHERE id = :id")
+    suspend fun songById(id: Long): SongEntity?
+
+    // §2.1 Home rows — nothing algorithmic, nothing networked.
+    @Query(
+        "SELECT s.* FROM songs s INNER JOIN play_stats p ON p.songId = s.id " +
+            "WHERE p.lastPlayedAt > 0 ORDER BY p.lastPlayedAt DESC LIMIT 10"
+    )
+    fun recentlyPlayed(): Flow<List<SongEntity>>
+
+    @Query("SELECT * FROM songs ORDER BY dateAddedSec DESC LIMIT 10")
+    fun recentlyAdded(): Flow<List<SongEntity>>
+
+    @Query(
+        "SELECT s.* FROM songs s INNER JOIN play_stats p ON p.songId = s.id " +
+            "WHERE p.playCount > 0 ORDER BY p.playCount DESC LIMIT 10"
+    )
+    fun mostPlayed(): Flow<List<SongEntity>>
+
     /** Compact projection for the in-memory search index (§2.3). */
     @Query(
         "SELECT id, uri, title, artistName, albumName, fileName, albumId, artistId, " +

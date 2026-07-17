@@ -48,7 +48,38 @@ class PlaybackRepository @Inject constructor(
     private val songBrowseDao: SongBrowseDao,
     private val playlistDao: com.resonate.player.data.db.PlaylistDao,
     private val connection: PlayerConnection,
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
 ) {
+
+    /** §2.8 share target: play a file handed to us by another app. */
+    suspend fun playExternal(uri: android.net.Uri) {
+        val displayName = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                context.contentResolver.query(
+                    uri,
+                    arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),
+                    null, null, null,
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) cursor.getString(0) else null
+                }
+            } catch (_: Exception) {
+                null
+            }
+        }
+        val item = MediaItem.Builder()
+            .setMediaId("external:$uri")
+            .setUri(uri)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(displayName?.substringBeforeLast('.') ?: uri.lastPathSegment)
+                    .build()
+            )
+            .build()
+        val controller = connection.awaitController()
+        controller.setMediaItems(listOf(item))
+        controller.prepare()
+        controller.play()
+    }
 
     private suspend fun play(songs: List<SongEntity>, startSongId: Long?) {
         // §4: unsupported files never enter the queue — they're dimmed in UI.
@@ -93,11 +124,12 @@ class PlaybackRepository @Inject constructor(
         play(songs, songs.getOrNull(startIndex)?.id)
     }
 
-    suspend fun addToQueue(song: Song) {
+    suspend fun addToQueue(songs: List<Song>) {
+        val playable = songs.filter { it.isSupported }
+        if (playable.isEmpty()) return
         val controller = connection.awaitController()
-        controller.addMediaItem(song.toMediaItem())
-        if (controller.mediaItemCount == 1) {
-            controller.prepare()
-        }
+        val wasEmpty = controller.mediaItemCount == 0
+        controller.addMediaItems(playable.map { it.toMediaItem() })
+        if (wasEmpty) controller.prepare()
     }
 }

@@ -36,7 +36,13 @@ data object AppearanceSettingsRoute
 data object LibrarySettingsRoute
 
 @Serializable
+data object PlaybackSettingsRoute
+
+@Serializable
 data object EqualizerRoute
 
 @Serializable
 data object AboutRoute
+
+@Serializable
+data object StatsRoute

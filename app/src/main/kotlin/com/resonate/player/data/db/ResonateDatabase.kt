@@ -14,8 +14,10 @@ import androidx.room.RoomDatabase
         PlaylistSongEntity::class,
         PlayStatEntity::class,
         QueueItemEntity::class,
+        LongPositionEntity::class,
+        PlayEventEntity::class,
     ],
-    version = 1,
+    version = 3,
     exportSchema = true,
 )
 abstract class ResonateDatabase : RoomDatabase() {
@@ -29,4 +31,6 @@ abstract class ResonateDatabase : RoomDatabase() {
     abstract fun artistBrowseDao(): ArtistBrowseDao
     abstract fun folderBrowseDao(): FolderBrowseDao
     abstract fun genreBrowseDao(): GenreBrowseDao
+    abstract fun longPositionDao(): LongPositionDao
+    abstract fun playEventDao(): PlayEventDao
 }

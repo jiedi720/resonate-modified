@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="shuffle_all"
+        android:enabled="true"
+        android:icon="@drawable/ic_widget_play"
+        android:shortcutShortLabel="@string/shortcut_shuffle">
+        <intent
+            android:action="com.resonate.player.SHUFFLE_ALL"
+            android:targetPackage="com.resonate.player"
+            android:targetClass="com.resonate.player.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="continue_listening"
+        android:enabled="true"
+        android:icon="@drawable/ic_widget_next"
+        android:shortcutShortLabel="@string/shortcut_continue">
+        <intent
+            android:action="com.resonate.player.CONTINUE"
+            android:targetPackage="com.resonate.player"
+            android:targetClass="com.resonate.player.MainActivity" />
+    </shortcut>
+</shortcuts>

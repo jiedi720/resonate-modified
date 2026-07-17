@@ -18,8 +18,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -80,7 +82,7 @@ fun LibraryScreen(
     onPlaylistClick: (Long) -> Unit,
     onSongClick: (Song) -> Unit,
     onFolderSongClick: (Song) -> Unit,
-    onSongLongPress: (Song) -> Unit,
+    onAddSelection: (List<Song>) -> Unit,
 ) {
     val viewModel: LibraryBrowseViewModel = hiltViewModel()
     val prefs by viewModel.prefs.collectAsStateWithLifecycle()
@@ -128,7 +130,7 @@ fun LibraryScreen(
             }
         }
         when (selectedTab) {
-            0 -> SongsTab(viewModel, onSongClick, onSongLongPress)
+            0 -> SongsTab(viewModel, onSongClick, onAddSelection)
             1 -> AlbumsTab(viewModel, onAlbumClick)
             2 -> ArtistsTab(viewModel, onArtistClick)
             3 -> PlaylistsTabContent(onPlaylistClick = onPlaylistClick)
@@ -144,7 +146,7 @@ fun LibraryScreen(
 private fun SongsTab(
     viewModel: LibraryBrowseViewModel,
     onSongClick: (Song) -> Unit,
-    onSongLongPress: (Song) -> Unit,
+    onAddSelection: (List<Song>) -> Unit,
 ) {
     val songs: LazyPagingItems<Song> = viewModel.songs.collectAsLazyPagingItems()
     val letterIndex by viewModel.songLetterIndex.collectAsStateWithLifecycle()
@@ -153,18 +155,39 @@ private fun SongsTab(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
+    // §2.2 multi-select: long-press enters, back exits, selection is by id.
+    val selectedSongs = remember { androidx.compose.runtime.mutableStateMapOf<Long, Song>() }
+    val selectionMode = selectedSongs.isNotEmpty()
+    BackHandler(enabled = selectionMode) { selectedSongs.clear() }
+
+    fun toggle(song: Song) {
+        if (selectedSongs.containsKey(song.id)) selectedSongs.remove(song.id)
+        else selectedSongs[song.id] = song
+    }
+
     if (songCount == 0) {
         EmptyLibrary()
         return
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        CountAndSortBar(
-            countText = stringResource(R.string.songs_count, songCount),
-            sort = sort,
-            options = songSortOptions,
-            onSortChange = viewModel::setSongSort,
-        )
+        if (selectionMode) {
+            SelectionBar(
+                count = selectedSongs.size,
+                onAdd = {
+                    onAddSelection(selectedSongs.values.toList())
+                    selectedSongs.clear()
+                },
+                onClose = { selectedSongs.clear() },
+            )
+        } else {
+            CountAndSortBar(
+                countText = stringResource(R.string.songs_count, songCount),
+                sort = sort,
+                options = songSortOptions,
+                onSortChange = viewModel::setSongSort,
+            )
+        }
         Box(modifier = Modifier.fillMaxSize()) {
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                 items(
@@ -180,8 +203,11 @@ private fun SongsTab(
                             duration = formatDuration(song.durationMs),
                             artworkUri = song.artworkUri,
                             supported = song.isSupported,
-                            onClick = { onSongClick(song) },
-                            onLongClick = { onSongLongPress(song) },
+                            selected = selectedSongs.containsKey(song.id),
+                            onClick = {
+                                if (selectionMode) toggle(song) else onSongClick(song)
+                            },
+                            onLongClick = { toggle(song) },
                         )
                     } else {
                         TrackRowPlaceholder()
@@ -192,6 +218,41 @@ private fun SongsTab(
                 entries = letterIndex,
                 onJump = { scope.launch { listState.scrollToItem(it) } },
                 modifier = Modifier.align(Alignment.CenterEnd),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SelectionBar(
+    count: Int,
+    onAdd: () -> Unit,
+    onClose: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.selection_count, count),
+            style = ResonateTheme.type.title,
+            color = ResonateTheme.colors.accent,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = onAdd) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
+                contentDescription = stringResource(R.string.add_to_queue),
+                tint = ResonateTheme.colors.bone,
+            )
+        }
+        IconButton(onClick = onClose) {
+            Icon(
+                imageVector = Icons.Filled.Close,
+                contentDescription = stringResource(R.string.action_cancel),
+                tint = ResonateTheme.colors.muted,
             )
         }
     }

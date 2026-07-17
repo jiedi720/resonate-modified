@@ -44,8 +44,11 @@ class LibraryRepository @Inject constructor(
             _scanState.value = ScanState.Scanning(0)
             val started = SystemClock.elapsedRealtime()
             try {
-                val minDuration = prefsStore.prefs.first().minDurationSec
-                val total = scanner.fullScan(minDurationSec = minDuration) { found ->
+                val prefs = prefsStore.prefs.first()
+                val total = scanner.fullScan(
+                    minDurationSec = prefs.minDurationSec,
+                    excludedFolders = prefs.excludedFolders,
+                ) { found ->
                     _scanState.value = ScanState.Scanning(found)
                 }
                 val took = SystemClock.elapsedRealtime() - started

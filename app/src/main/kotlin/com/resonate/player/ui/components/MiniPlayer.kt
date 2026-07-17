@@ -13,11 +13,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -38,15 +44,16 @@ fun MiniPlayer(
     val colors = ResonateTheme.colors
     val nowPlaying by viewModel.nowPlaying.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
+    val durationMs by viewModel.durationMs.collectAsStateWithLifecycle()
+    val positionMs by viewModel.positionMs.collectAsStateWithLifecycle(0L)
     val track = nowPlaying ?: return
 
     Column(modifier = modifier.fillMaxWidth()) {
-        // §1.1: the chroma-tinted edge is the mini-player's share of the bleed.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(2.dp)
-                .background(colors.accent.copy(alpha = 0.75f)),
+        // §1.1 + UX: the chroma edge doubles as a live, seekable progress bar.
+        MiniSeekBar(
+            positionMs = positionMs,
+            durationMs = durationMs,
+            onSeek = viewModel::seekTo,
         )
         Row(
             modifier = Modifier
@@ -97,6 +104,67 @@ fun MiniPlayer(
                     tint = colors.bone,
                 )
             }
+        }
+    }
+}
+
+/** Thin chroma progress line, tappable and draggable to seek. */
+@Composable
+private fun MiniSeekBar(
+    positionMs: Long,
+    durationMs: Long,
+    onSeek: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = ResonateTheme.colors
+    var dragFraction by remember { mutableStateOf<Float?>(null) }
+    val fraction = dragFraction
+        ?: if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(16.dp)
+            .pointerInput(durationMs) {
+                detectTapGestures { offset ->
+                    if (durationMs > 0) {
+                        onSeek((offset.x / size.width * durationMs).toLong().coerceIn(0, durationMs))
+                    }
+                }
+            }
+            .pointerInput(durationMs) {
+                detectHorizontalDragGestures(
+                    onDragStart = { offset ->
+                        dragFraction = (offset.x / size.width).coerceIn(0f, 1f)
+                    },
+                    onHorizontalDrag = { change, _ ->
+                        dragFraction = (change.position.x / size.width).coerceIn(0f, 1f)
+                    },
+                    onDragEnd = {
+                        val target = dragFraction
+                        if (target != null && durationMs > 0) {
+                            onSeek((target * durationMs).toLong())
+                        }
+                        dragFraction = null
+                    },
+                    onDragCancel = { dragFraction = null },
+                )
+            },
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(3.dp)
+                .background(colors.accent.copy(alpha = 0.25f)),
+        )
+        if (fraction > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(fraction)
+                    .height(3.dp)
+                    .background(colors.accent),
+            )
         }
     }
 }

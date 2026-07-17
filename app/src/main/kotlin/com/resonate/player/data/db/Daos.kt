@@ -251,6 +251,9 @@ interface PlaylistDao {
             "FROM songs s INNER JOIN folders f ON f.id = s.folderId"
     )
     suspend fun allSongPaths(): List<SongPathRow>
+
+    @Query("SELECT * FROM playlists ORDER BY createdAt ASC")
+    suspend fun allPlaylistsOnce(): List<PlaylistEntity>
 }
 
 data class QueueItemBackup(
@@ -283,4 +286,65 @@ interface QueueDao {
         deleteAll()
         insertAll(songIds.mapIndexed { index, id -> QueueItemEntity(position = index, songId = id) })
     }
+}
+
+data class ArtistPlayCount(
+    val artistId: Long,
+    val artistName: String,
+    val plays: Int,
+)
+
+data class SongPlayCount(
+    val songId: Long,
+    val title: String,
+    val artistName: String,
+    val albumId: Long,
+    val plays: Int,
+    val durationMs: Long,
+)
+
+@Dao
+interface PlayEventDao {
+    @Insert
+    suspend fun insert(event: PlayEventEntity)
+
+    @Query("SELECT COUNT(*) FROM play_events WHERE playedAt >= :since")
+    fun playCountSince(since: Long): Flow<Int>
+
+    @Query(
+        "SELECT COALESCE(SUM(s.durationMs), 0) FROM play_events e " +
+            "INNER JOIN songs s ON s.id = e.songId WHERE e.playedAt >= :since"
+    )
+    fun listeningMsSince(since: Long): Flow<Long>
+
+    @Query(
+        "SELECT s.artistId AS artistId, s.artistName AS artistName, COUNT(*) AS plays " +
+            "FROM play_events e INNER JOIN songs s ON s.id = e.songId " +
+            "WHERE e.playedAt >= :since GROUP BY s.artistId ORDER BY plays DESC LIMIT :limit"
+    )
+    fun topArtistsSince(since: Long, limit: Int): Flow<List<ArtistPlayCount>>
+
+    @Query(
+        "SELECT s.id AS songId, s.title AS title, s.artistName AS artistName, " +
+            "s.albumId AS albumId, COUNT(*) AS plays, s.durationMs AS durationMs " +
+            "FROM play_events e INNER JOIN songs s ON s.id = e.songId " +
+            "WHERE e.playedAt >= :since GROUP BY s.id ORDER BY plays DESC LIMIT :limit"
+    )
+    fun topSongsSince(since: Long, limit: Int): Flow<List<SongPlayCount>>
+
+    /** Events older than a year serve no view — keep the table lean. */
+    @Query("DELETE FROM play_events WHERE playedAt < :before")
+    suspend fun prune(before: Long)
+}
+
+@Dao
+interface LongPositionDao {
+    @Query("SELECT positionMs FROM long_positions WHERE songId = :songId")
+    suspend fun positionFor(songId: Long): Long?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(entity: LongPositionEntity)
+
+    @Query("DELETE FROM long_positions WHERE songId = :songId")
+    suspend fun clear(songId: Long)
 }

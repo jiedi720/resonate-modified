@@ -17,6 +17,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -248,6 +250,206 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
             color = colors.muted,
             modifier = Modifier.padding(16.dp),
         )
+
+        // §2.7 excluded folders — pick with SAF, filter at scan time.
+        val folderLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree()
+        ) { uri ->
+            uri?.let { treeUri ->
+                treePathOf(treeUri)?.let { path ->
+                    themeViewModel.update {
+                        if (path in it.excludedFolders) it
+                        else it.copy(excludedFolders = it.excludedFolders + path)
+                    }
+                    scanViewModel.rescan()
+                }
+            }
+        }
+
+        Text(
+            text = stringResource(R.string.library_excluded_folders).uppercase(),
+            style = ResonateTheme.type.caption,
+            color = colors.muted,
+            modifier = Modifier.padding(start = 16.dp, top = 8.dp),
+        )
+        prefs.excludedFolders.forEach { path ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = path,
+                    style = ResonateTheme.type.body,
+                    color = colors.bone,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(
+                    onClick = {
+                        themeViewModel.update {
+                            it.copy(excludedFolders = it.excludedFolders - path)
+                        }
+                        scanViewModel.rescan()
+                    },
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = stringResource(R.string.library_exclude_remove),
+                        tint = colors.muted,
+                    )
+                }
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .clickable { folderLauncher.launch(null) }
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = null,
+                tint = colors.accent,
+            )
+            Text(
+                text = stringResource(R.string.library_exclude_add),
+                style = ResonateTheme.type.title,
+                color = colors.bone,
+                modifier = Modifier.padding(start = 16.dp),
+            )
+        }
+    }
+}
+
+/** SAF tree uri → filesystem path ("primary:Music/X" → /storage/emulated/0/Music/X). */
+private fun treePathOf(treeUri: android.net.Uri): String? = try {
+    val docId = android.provider.DocumentsContract.getTreeDocumentId(treeUri)
+    val (volume, path) = docId.split(':', limit = 2).let {
+        it[0] to (it.getOrNull(1) ?: "")
+    }
+    when (volume) {
+        "primary" -> "/storage/emulated/0/$path".trimEnd('/')
+        else -> "/storage/$volume/$path".trimEnd('/')
+    }
+} catch (_: Exception) {
+    null
+}
+
+// ---------- Playback (§2.7, wave 2) ----------
+
+@Composable
+fun PlaybackSettingsScreen(onBack: () -> Unit) {
+    val viewModel: ThemeViewModel = hiltViewModel()
+    val prefs by viewModel.prefs.collectAsStateWithLifecycle()
+    val colors = ResonateTheme.colors
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .verticalScroll(rememberScrollState()),
+    ) {
+        SettingsHeader(stringResource(R.string.settings_playback), onBack)
+
+        // Crossfade 0–12s
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.playback_crossfade),
+                style = ResonateTheme.type.title,
+                color = colors.bone,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = if (prefs.crossfadeSec == 0) stringResource(R.string.playback_crossfade_off)
+                else stringResource(R.string.duration_seconds, prefs.crossfadeSec),
+                style = ResonateTheme.type.mono,
+                color = colors.accent,
+            )
+        }
+        Slider(
+            value = prefs.crossfadeSec.toFloat(),
+            onValueChange = { value ->
+                viewModel.update { it.copy(crossfadeSec = value.toInt()) }
+            },
+            valueRange = 0f..12f,
+            steps = 11,
+            colors = SliderDefaults.colors(
+                thumbColor = colors.accent,
+                activeTrackColor = colors.accent,
+                inactiveTrackColor = colors.surfaceRaised,
+            ),
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+
+        SwitchRow(
+            title = stringResource(R.string.playback_skip_silence),
+            subtitle = stringResource(R.string.playback_skip_silence_hint),
+            checked = prefs.skipSilence,
+            onCheckedChange = { value -> viewModel.update { it.copy(skipSilence = value) } },
+        )
+        SwitchRow(
+            title = stringResource(R.string.playback_resume_on_connect),
+            subtitle = stringResource(R.string.playback_resume_on_connect_hint),
+            checked = prefs.resumeOnConnect,
+            onCheckedChange = { value -> viewModel.update { it.copy(resumeOnConnect = value) } },
+        )
+        SwitchRow(
+            title = stringResource(R.string.playback_long_audio_memory),
+            subtitle = stringResource(R.string.playback_long_audio_memory_hint),
+            checked = prefs.longAudioMemory,
+            onCheckedChange = { value -> viewModel.update { it.copy(longAudioMemory = value) } },
+        )
+
+        // Replay gain (§2.7): off / track / album
+        Text(
+            text = stringResource(R.string.playback_replay_gain).uppercase(),
+            style = ResonateTheme.type.caption,
+            color = colors.muted,
+            modifier = Modifier.padding(start = 16.dp, top = 16.dp),
+        )
+        listOf(
+            com.resonate.player.data.prefs.ReplayGainMode.OFF to R.string.replay_gain_off,
+            com.resonate.player.data.prefs.ReplayGainMode.TRACK to R.string.replay_gain_track,
+            com.resonate.player.data.prefs.ReplayGainMode.ALBUM to R.string.replay_gain_album,
+        ).forEach { (mode, labelRes) ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .clickable { viewModel.update { it.copy(replayGainMode = mode) } }
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(
+                    selected = prefs.replayGainMode == mode,
+                    onClick = { viewModel.update { it.copy(replayGainMode = mode) } },
+                    colors = RadioButtonDefaults.colors(selectedColor = colors.accent),
+                )
+                Text(
+                    text = stringResource(labelRes),
+                    style = ResonateTheme.type.title,
+                    color = colors.bone,
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
+        }
+        Text(
+            text = stringResource(R.string.playback_replay_gain_hint),
+            style = ResonateTheme.type.caption,
+            color = colors.muted,
+            modifier = Modifier.padding(16.dp),
+        )
     }
 }
 
@@ -448,6 +650,30 @@ fun AboutScreen(onBack: () -> Unit) {
         )
         Text(
             text = stringResource(R.string.about_no_internet),
+            style = ResonateTheme.type.body,
+            color = colors.bone,
+            modifier = Modifier.padding(16.dp),
+        )
+        Text(
+            text = stringResource(R.string.about_license),
+            style = ResonateTheme.type.title,
+            color = colors.bone,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+        Text(
+            text = stringResource(R.string.about_license_body),
+            style = ResonateTheme.type.body,
+            color = colors.muted,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+        Text(
+            text = stringResource(R.string.about_whats_new).uppercase(),
+            style = ResonateTheme.type.caption,
+            color = colors.muted,
+            modifier = Modifier.padding(start = 16.dp, top = 8.dp),
+        )
+        Text(
+            text = stringResource(R.string.about_changelog),
             style = ResonateTheme.type.body,
             color = colors.bone,
             modifier = Modifier.padding(16.dp),

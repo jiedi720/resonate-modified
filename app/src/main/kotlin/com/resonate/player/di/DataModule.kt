@@ -24,10 +24,35 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DataModule {
 
+    private val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
+        override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS long_positions (" +
+                    "songId INTEGER NOT NULL PRIMARY KEY, " +
+                    "positionMs INTEGER NOT NULL, " +
+                    "updatedAt INTEGER NOT NULL)"
+            )
+        }
+    }
+
+    private val MIGRATION_2_3 = object : androidx.room.migration.Migration(2, 3) {
+        override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS play_events (" +
+                    "id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
+                    "songId INTEGER NOT NULL, " +
+                    "playedAt INTEGER NOT NULL)"
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_play_events_playedAt ON play_events(playedAt)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_play_events_songId ON play_events(songId)")
+        }
+    }
+
     @Provides
     @Singleton
     fun database(@ApplicationContext context: Context): ResonateDatabase =
         Room.databaseBuilder(context, ResonateDatabase::class.java, "resonate.db")
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
 
     @Provides
@@ -59,4 +84,12 @@ object DataModule {
 
     @Provides
     fun genreBrowseDao(db: ResonateDatabase): GenreBrowseDao = db.genreBrowseDao()
+
+    @Provides
+    fun longPositionDao(db: ResonateDatabase): com.resonate.player.data.db.LongPositionDao =
+        db.longPositionDao()
+
+    @Provides
+    fun playEventDao(db: ResonateDatabase): com.resonate.player.data.db.PlayEventDao =
+        db.playEventDao()
 }

@@ -20,6 +20,8 @@ enum class SortField { TITLE, ARTIST, ALBUM, DATE_ADDED, DURATION, PLAY_COUNT, N
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
+enum class ReplayGainMode { OFF, TRACK, ALBUM }
+
 @Serializable
 data class SortPref(val field: SortField = SortField.TITLE, val ascending: Boolean = true)
 
@@ -41,6 +43,7 @@ data class UserPrefs(
     val materialYou: Boolean = false,
     // §2.7 Library
     val minDurationSec: Int = 30,
+    val excludedFolders: List<String> = emptyList(),
     // §2.4 speed sheet
     val playbackSpeed: Float = 1f,
     val pitchCorrection: Boolean = true,
@@ -50,6 +53,12 @@ data class UserPrefs(
     val eqBandLevels: List<Int> = emptyList(),
     val bassBoost: Int = 0,
     val virtualizer: Int = 0,
+    // §2.7 Playback (wave 2)
+    val crossfadeSec: Int = 0,
+    val skipSilence: Boolean = false,
+    val replayGainMode: ReplayGainMode = ReplayGainMode.OFF,
+    val resumeOnConnect: Boolean = false,
+    val longAudioMemory: Boolean = true,
 )
 
 private object UserPrefsSerializer : Serializer<UserPrefs> {

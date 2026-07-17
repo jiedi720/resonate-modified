@@ -65,6 +65,7 @@
     <string name="playlist_export">Export as M3U8</string>
     <string name="playlist_imported_default_name">Imported playlist</string>
     <string name="add_to_queue">Add to queue</string>
+    <string name="selection_count">%1$d selected</string>
     <string name="action_save">Save</string>
     <string name="action_cancel">Cancel</string>
     <string name="cd_more">More options</string>
@@ -103,6 +104,10 @@
     <string name="settings_rescan">Rescan library</string>
     <string name="about_no_internet">This app has no Internet permission. Nothing leaves your phone — the OS enforces it.</string>
     <string name="about_version">Version %1$s</string>
+    <string name="about_whats_new">What\'s new</string>
+    <string name="about_changelog">1.2.0 — Your sound stats · backup &amp; restore · 4×1 widget · excluded folders\n\n1.1.0 — Crossfade · skip silence · volume leveling · resume on connect · long-audio memory\n\n1.0.0 — The foundation: library, playback, chroma bleed, queue, playlists, lyrics, search, equalizer, widget</string>
+    <string name="about_license">MIT License · © 2026 Kimhab</string>
+    <string name="about_license_body">Free for everyone. Use it, copy it, change it, share it.</string>
     <string name="about_licenses_body">Built with Jetpack Compose, Media3 ExoPlayer, Room, Coil, Hilt, and Glance — all Apache-2.0. Fonts: Bricolage Grotesque, Figtree (OFL) and JetBrains Mono (OFL).</string>
 
     <!-- Appearance -->
@@ -144,6 +149,51 @@
     <string name="storage_clear_cache">Clear artwork cache</string>
     <string name="storage_cache_cleared">Artwork cache cleared</string>
 
+    <!-- Stats (wave 3) -->
+    <string name="stats_title">Your sound</string>
+    <string name="stats_plays_this_month">plays this month</string>
+    <string name="stats_minutes_this_month">minutes listened</string>
+    <string name="stats_top_artists">Top artists</string>
+    <string name="stats_top_songs">Top songs</string>
+    <string name="stats_plays">%1$d plays</string>
+    <string name="stats_empty">Play some music — your month builds from here.</string>
+    <string name="stats_footnote">Counted on this phone, from your plays. Nothing leaves the device.</string>
+
+    <!-- Backup (wave 3) -->
+    <string name="backup_export">Export backup</string>
+    <string name="backup_import">Import backup</string>
+    <string name="backup_export_done">Backup saved</string>
+    <string name="backup_import_done">Restored %1$d playlists</string>
+    <string name="backup_import_failed">That didn\'t work — check the file and try again</string>
+
+    <!-- Excluded folders (wave 3) -->
+    <string name="library_excluded_folders">Excluded folders</string>
+    <string name="library_exclude_add">Exclude a folder…</string>
+    <string name="library_exclude_remove">Stop excluding</string>
+
     <!-- Widget -->
     <string name="widget_description">Now playing with transport controls</string>
+
+    <!-- Shortcuts -->
+    <string name="shortcut_shuffle">Shuffle all</string>
+    <string name="shortcut_continue">Continue listening</string>
+
+    <!-- Lyrics -->
+    <string name="cd_lyrics">Lyrics</string>
+    <string name="lyrics_none">No lyrics found in this file.</string>
+
+    <!-- Playback settings (wave 2) -->
+    <string name="playback_crossfade">Crossfade</string>
+    <string name="playback_crossfade_off">Off</string>
+    <string name="playback_skip_silence">Skip silence</string>
+    <string name="playback_skip_silence_hint">Trim silent stretches inside tracks</string>
+    <string name="playback_resume_on_connect">Resume on headphone connect</string>
+    <string name="playback_resume_on_connect_hint">Continue playing when headphones or Bluetooth reconnect</string>
+    <string name="playback_long_audio_memory">Remember position in long audio</string>
+    <string name="playback_long_audio_memory_hint">Mixes and podcasts over 20 minutes resume where you left off</string>
+    <string name="playback_replay_gain">Volume leveling</string>
+    <string name="playback_replay_gain_hint">Uses ReplayGain tags when your files carry them. Files without tags play unchanged.</string>
+    <string name="replay_gain_off">Off</string>
+    <string name="replay_gain_track">By track</string>
+    <string name="replay_gain_album">By album</string>
 </resources>
