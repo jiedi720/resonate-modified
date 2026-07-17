@@ -4,6 +4,17 @@
 
 Free. No ads. No trackers. No account. **No Internet permission** — the OS itself guarantees nothing leaves your phone. Resonate plays the music that already lives on your device.
 
+## 📥 Download
+
+**Grab the latest signed APK from the [`release/`](release/) folder:**
+
+| File | For |
+|---|---|
+| [resonate-1.2.0-arm64.apk](release/resonate-1.2.0-arm64.apk) | Most phones from ~2016 onward (recommended, smaller) |
+| [resonate-1.2.0-universal.apk](release/resonate-1.2.0-universal.apk) | Any device — use if unsure |
+
+Copy the APK to your phone, open it, allow "install unknown apps" when prompted. Requires Android 8.0+.
+
 ---
 
 ## The signature: chroma bleed
@@ -41,6 +52,7 @@ Extracted colors are clamped for WCAG AA contrast before use — ugly artwork ca
 - Scrubbable seek bar with haptic detents, mono timecodes
 - **Lyrics** — embedded (ID3/Vorbis/M4A) and `.lrc` sidecar files; synced lyrics scroll karaoke-style with tap-to-seek
 - Swipe artwork to change track, swipe down to collapse, marquee for long titles
+- The mini-player's chroma edge doubles as a **live progress bar — tap or drag it to seek** from any screen
 
 ### Home & Search
 - Jump back in · Recently added · Most played · Shuffle everything — nothing algorithmic, nothing networked
@@ -67,6 +79,9 @@ Extracted colors are clamped for WCAG AA contrast before use — ugly artwork ca
 - Widget gained a compact 4×1 layout (resize it)
 - Excluded folders with system folder picker
 - Play-event history (auto-pruned after one year)
+- Seekable live progress bar on the mini-player
+- Music-note placeholder wherever artwork is missing
+- First signed public release (APKs in [`release/`](release/))
 
 ### 1.1.0 — "Sound quality" *(2026-07-17)*
 - Crossfade 0–12 s (fade-through transition)
@@ -114,14 +129,68 @@ app/src/main/kotlin/com/resonate/player/
 `UI ↔ MediaController (PlayerConnection) ↔ MediaSessionService ↔ ExoPlayer`.
 This single path is why the notification, widget, Bluetooth, and lock screen all just work.
 
-### Everyday commands
+### From zero to running — the full loop
+
+**1. Set up the machine (once)**
 ```powershell
-.\gradlew.bat assembleDebug          # build debug APK (per-ABI splits)
-.\gradlew.bat testDebugUnitTest      # run unit tests (25 as of 1.2.0)
-.\gradlew.bat installDebug           # build + install on the USB device
-.\gradlew.bat assembleRelease        # R8 full mode, shrunk, ~3.6 MB/ABI (unsigned)
+winget install EclipseAdoptium.Temurin.17.JDK        # JDK 17
+# Android SDK: install cmdline-tools, then:
+sdkmanager --licenses
+sdkmanager platform-tools "platforms;android-36" "build-tools;36.0.0"
+# Set JAVA_HOME and ANDROID_HOME as environment variables
 ```
-APKs land in `app/build/outputs/apk/<variant>/`.
+Clone the repo. `local.properties` needs one line: `sdk.dir=<path-to-Android-Sdk>`.
+
+**2. Develop**
+- Open the project in Android Studio (or any editor + terminal)
+- Source lives under `app/src/main/kotlin/com/resonate/player/` — see the structure map above
+- Follow the definition-of-done checklist below for every change
+
+**3. Build & test (debug)**
+```powershell
+.\gradlew.bat assembleDebug          # build debug APKs (per-ABI splits)
+.\gradlew.bat testDebugUnitTest      # run unit tests (25 as of 1.2.0)
+.\gradlew.bat installDebug           # build + install on a USB-connected phone
+```
+Debug APKs land in `app/build/outputs/apk/debug/`. Enable USB debugging on the phone
+(Settings → About → tap Build number 7×, then Developer options → USB debugging).
+
+**4. Build the release**
+
+Release builds are signed with `resonate-release.jks` via a git-ignored
+`keystore.properties` at the repo root:
+```properties
+storeFile=resonate-release.jks
+storePassword=<yours>
+keyAlias=resonate
+keyPassword=<yours>
+```
+First time only — create the keystore (**back it up; losing it means you can
+never update the installed app with the same signature**):
+```powershell
+keytool -genkeypair -v -keystore resonate-release.jks -keyalg RSA -keysize 2048 `
+        -validity 10000 -alias resonate
+```
+Then every release:
+```powershell
+.\gradlew.bat assembleRelease        # R8 full mode + shrink + sign, ~3.9 MB/ABI
+```
+Signed APKs land in `app/build/outputs/apk/release/` (no `-unsigned` suffix =
+signing worked). Verify with:
+```powershell
+apksigner verify --print-certs app\build\outputs\apk\release\app-universal-release.apk
+```
+
+**5. Publish**
+1. Bump `versionCode` + `versionName` in `app/build.gradle.kts`
+2. Update the changelog here and in `strings.xml` (`about_changelog`)
+3. Copy the signed APKs into [`release/`](release/) with versioned names
+4. Smoke-test on a device: install, scan, play, chroma, queue restore
+5. Commit and tag: `git tag v1.2.0`
+
+**Switching a debug install to release** requires uninstalling first (different
+signatures). In-app: **You → Export backup**, uninstall, install the release
+APK, **You → Import backup** — everything comes back.
 
 ### Definition of done (every change)
 - No main-thread I/O; no `!!`; no `runBlocking` in production code
@@ -137,17 +206,6 @@ Room schema lives at version 3 (`schemas/` is exported). Any entity change requi
 1. Bump `version` in `ResonateDatabase`
 2. Add a `Migration(n, n+1)` in `DataModule`
 3. Install over an existing build on-device and check logcat for migration errors
-
-### Release process
-1. **One-time**: create a keystore (never commit it):
-   ```powershell
-   keytool -genkeypair -v -keystore resonate-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias resonate
-   ```
-2. Add a `signingConfig` to `app/build.gradle.kts` reading credentials from a git-ignored `keystore.properties`
-3. `.\gradlew.bat assembleRelease` → signed per-ABI APKs
-4. **Switching an installed debug build to release requires uninstall** (different signatures). Export a backup in-app first, reinstall, import.
-5. Smoke-test on-device: scan, play, chroma, notification, queue restore
-6. Tag the release; distribute via GitHub Releases / F-Droid (spec's recommendation — the no-proprietary-deps discipline already fits)
 
 ### Deferred / roadmap
 - Tag editor (jaudiotagger is already bundled)

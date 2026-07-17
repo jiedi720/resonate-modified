@@ -9,3 +9,8 @@ captures/
 .cxx/
 *.apk
 *.aab
+!release/*.apk
+
+# Signing secrets — never commit; losing the keystore means losing update rights
+*.jks
+keystore.properties
