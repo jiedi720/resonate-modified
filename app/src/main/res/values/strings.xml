@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Resonate</string>
+
+    <!-- Tabs -->
+    <string name="tab_home">Home</string>
+    <string name="tab_library">Library</string>
+    <string name="tab_search">Search</string>
+    <string name="tab_you">You</string>
+
+    <!-- Home -->
+    <string name="home_jump_back_in">Jump back in</string>
+    <string name="home_recently_added">Recently added</string>
+    <string name="home_most_played">Most played</string>
+    <string name="home_shuffle_everything">Shuffle everything</string>
+
+    <!-- Library sub-tabs -->
+    <string name="library_songs">Songs</string>
+    <string name="library_albums">Albums</string>
+    <string name="library_artists">Artists</string>
+    <string name="library_playlists">Playlists</string>
+    <string name="library_folders">Folders</string>
+    <string name="library_genres">Genres</string>
+
+    <!-- Empty states / voice -->
+    <string name="empty_library_title">No audio on this device yet.</string>
+    <string name="empty_library_body">Add files to Music, or pick a folder to scan.</string>
+    <string name="empty_library_action">Choose folder</string>
+    <string name="search_hint">Search your library</string>
+    <string name="search_no_results">Nothing matches “%1$s”. Try an artist or album name.</string>
+    <string name="search_recent">Recent searches</string>
+    <string name="search_clear_recent">Clear</string>
+    <string name="permission_rationale">Resonate needs access to your audio files to build your library. Nothing leaves your phone.</string>
+    <string name="permission_grant">Grant access</string>
+    <string name="permission_open_settings">Open system settings</string>
+    <string name="scan_in_progress">Scanning… %1$d tracks found</string>
+    <string name="playback_error">Can’t play this file — the format may be unsupported or the file is corrupt.</string>
+    <string name="playback_error_skip">Skip</string>
+    <string name="playback_error_details">Details</string>
+
+    <!-- Player -->
+    <string name="cd_play">Play</string>
+    <string name="cd_pause">Pause</string>
+    <string name="cd_next">Next track</string>
+    <string name="cd_previous">Previous track</string>
+    <string name="cd_shuffle">Shuffle</string>
+    <string name="cd_repeat">Repeat</string>
+    <string name="cd_artwork">Album artwork</string>
+    <string name="cd_search">Search</string>
+    <string name="cd_expand_player">Open Now Playing</string>
+    <string name="cd_collapse">Collapse player</string>
+    <string name="cd_favorite">Favorite</string>
+    <string name="cd_queue">Queue</string>
+    <string name="cd_drag_to_reorder">Drag to reorder</string>
+    <string name="queue_title">Queue</string>
+    <string name="queue_clear">Clear</string>
+    <string name="queue_playing_next">Playing next</string>
+    <string name="queue_save_as_playlist">Save as playlist</string>
+
+    <!-- Playlists -->
+    <string name="playlist_new">New playlist</string>
+    <string name="playlist_import">Import M3U8</string>
+    <string name="playlist_rename">Rename</string>
+    <string name="playlist_delete">Delete playlist</string>
+    <string name="playlist_export">Export as M3U8</string>
+    <string name="playlist_imported_default_name">Imported playlist</string>
+    <string name="add_to_queue">Add to queue</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="cd_more">More options</string>
+
+    <!-- Library browse -->
+    <string name="songs_count">%1$d songs</string>
+    <string name="albums_count">%1$d albums</string>
+    <string name="artists_count">%1$d artists</string>
+    <string name="albums_and_songs">%1$d albums · %2$d songs</string>
+    <string name="unsupported_format">Format not supported</string>
+    <string name="empty_playlists">No playlists yet.</string>
+    <string name="empty_genres">No genre tags in your library.</string>
+    <string name="cd_sort">Sort</string>
+    <string name="cd_back">Back</string>
+    <string name="sort_title">Title</string>
+    <string name="sort_artist">Artist</string>
+    <string name="sort_album">Album</string>
+    <string name="sort_date_added">Date added</string>
+    <string name="sort_duration">Duration</string>
+    <string name="sort_play_count">Play count</string>
+    <string name="sort_name">Name</string>
+    <string name="sort_song_count">Song count</string>
+    <string name="sort_year">Year</string>
+    <string name="sort_ascending">Ascending</string>
+    <string name="sort_descending">Descending</string>
+
+    <!-- Settings -->
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_library">Library</string>
+    <string name="settings_playback">Playback</string>
+    <string name="settings_equalizer">Equalizer</string>
+    <string name="settings_sleep_timer">Sleep timer</string>
+    <string name="settings_headset">Headset</string>
+    <string name="settings_storage">Storage</string>
+    <string name="settings_about">About</string>
+    <string name="settings_rescan">Rescan library</string>
+    <string name="about_no_internet">This app has no Internet permission. Nothing leaves your phone — the OS enforces it.</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_licenses_body">Built with Jetpack Compose, Media3 ExoPlayer, Room, Coil, Hilt, and Glance — all Apache-2.0. Fonts: Bricolage Grotesque, Figtree (OFL) and JetBrains Mono (OFL).</string>
+
+    <!-- Appearance -->
+    <string name="appearance_theme">Theme</string>
+    <string name="theme_system">Follow system</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="appearance_amoled">Pure black (AMOLED)</string>
+    <string name="appearance_amoled_hint">True black background in dark theme</string>
+    <string name="appearance_chroma">Chroma bleed</string>
+    <string name="appearance_chroma_hint">Tint the app with the current artwork</string>
+    <string name="appearance_material_you">Material You palette</string>
+    <string name="appearance_material_you_hint">Use the system accent when nothing overrides it</string>
+
+    <!-- Library settings -->
+    <string name="library_min_duration">Ignore tracks shorter than</string>
+    <string name="library_min_duration_hint">Keeps voice notes and ringtones out of your library. Takes effect on the next rescan.</string>
+    <string name="duration_all">Everything</string>
+    <string name="duration_seconds">%1$ds</string>
+
+    <!-- Equalizer -->
+    <string name="eq_enabled">Equalizer</string>
+    <string name="eq_unavailable">This device doesn\'t expose an equalizer.</string>
+    <string name="eq_presets">Presets</string>
+    <string name="eq_custom">Custom</string>
+    <string name="eq_bass_boost">Bass boost</string>
+    <string name="eq_virtualizer">Virtualizer</string>
+
+    <!-- Sleep timer / speed -->
+    <string name="sleep_minutes">%1$d minutes</string>
+    <string name="sleep_end_of_track">End of track</string>
+    <string name="sleep_cancel">Cancel timer</string>
+    <string name="speed_title">Playback speed</string>
+    <string name="speed_value">%1$.2f×</string>
+    <string name="speed_pitch_correction">Pitch correction</string>
+    <string name="cd_speed">Playback speed</string>
+
+    <!-- Storage -->
+    <string name="storage_clear_cache">Clear artwork cache</string>
+    <string name="storage_cache_cleared">Artwork cache cleared</string>
+
+    <!-- Widget -->
+    <string name="widget_description">Now playing with transport controls</string>
+</resources>
