@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -66,6 +67,7 @@ import androidx.navigation.compose.rememberNavController
 import com.resonate.player.R
 import com.resonate.player.data.repo.ScanState
 import com.resonate.player.ui.components.MiniPlayer
+import com.resonate.player.ui.components.Responsive
 import com.resonate.player.ui.home.HomeScreen
 import com.resonate.player.ui.library.LibraryScanViewModel
 import com.resonate.player.ui.library.LibraryScreen
@@ -264,12 +266,20 @@ private fun MainScaffold(
             }
         },
     ) { innerPadding ->
+      // Center all destination content in a readable column on tablets and
+      // foldables; the mini-player and tab bar stay full-width for reach.
+      Box(
+          modifier = Modifier
+              .fillMaxSize()
+              .padding(innerPadding),
+          contentAlignment = Alignment.TopCenter,
+      ) {
         NavHost(
             navController = navController,
             startDestination = HomeRoute,
             modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
+                .widthIn(max = Responsive.ListMaxWidth)
+                .fillMaxSize(),
         ) {
             composable<HomeRoute> {
                 HomeScreen(
@@ -399,6 +409,7 @@ private fun MainScaffold(
                 )
             }
         }
+      }
     }
 }
 

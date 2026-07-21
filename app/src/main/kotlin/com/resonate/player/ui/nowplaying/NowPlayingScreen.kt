@@ -10,12 +10,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Favorite
@@ -56,6 +58,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.resonate.player.R
 import com.resonate.player.domain.model.formatDuration
 import com.resonate.player.ui.components.ArtworkImage
+import com.resonate.player.ui.components.Responsive
 import com.resonate.player.ui.components.TransportButton
 import com.resonate.player.ui.player.PlaybackViewModel
 import com.resonate.player.ui.queue.QueueSheet
@@ -116,6 +119,16 @@ fun NowPlayingScreen(
                 )
             },
     ) {
+      // On tablets/foldables the transport would sprawl edge-to-edge; cap the
+      // content to a reachable, centered column (§ responsive). Modifier order
+      // matters: widthIn must precede fillMaxWidth or the cap is ignored.
+      Column(
+        modifier = Modifier
+            .align(Alignment.CenterHorizontally)
+            .widthIn(max = Responsive.PlayerMaxWidth)
+            .fillMaxWidth()
+            .fillMaxHeight(),
+      ) {
         // Collapse handle
         Row(modifier = Modifier.fillMaxWidth()) {
             IconButton(onClick = onCollapse) {
@@ -375,5 +388,6 @@ fun NowPlayingScreen(
                 )
             }
         }
+      }
     }
 }
