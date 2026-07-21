@@ -10,10 +10,10 @@ Free. No ads. No trackers. No account. **No Internet permission** — the OS its
 
 | File | For |
 |---|---|
-| [resonate-1.2.0-arm64.apk](release/resonate-1.2.0-arm64.apk) | Most phones from ~2016 onward (recommended, smaller) |
-| [resonate-1.2.0-universal.apk](release/resonate-1.2.0-universal.apk) | Any device — use if unsure |
+| [resonate-1.2.1-arm64.apk](release/resonate-1.2.1-arm64.apk) | Most phones from ~2016 onward (recommended, smaller) |
+| [resonate-1.2.1-universal.apk](release/resonate-1.2.1-universal.apk) | Any device — use if unsure |
 
-Copy the APK to your phone, open it, allow "install unknown apps" when prompted. Requires Android 8.0+.
+Copy the APK to your phone or tablet, open it, allow "install unknown apps" when prompted. Requires Android 8.0+. Works on phones, tablets, and foldables.
 
 ---
 
@@ -73,14 +73,18 @@ Extracted colors are clamped for WCAG AA contrast before use — ugly artwork ca
 
 ## Version history
 
+### 1.2.1 — "Every screen" *(2026-07-21)*
+- Responsive layouts for tablets and foldables — content centers in a readable column instead of stretching; phones unchanged
+- Fixed Now Playing artwork filling the whole screen on large displays
+- Seekable live progress bar on the mini-player
+- Music-note placeholder wherever artwork is missing
+
 ### 1.2.0 — "Your data" *(2026-07-17)*
 - **Your sound** stats page: plays, minutes, top artists/songs this month (counted from this version onward)
 - **Backup & restore** to a single JSON file (playlists, favorites, play history, all settings)
 - Widget gained a compact 4×1 layout (resize it)
 - Excluded folders with system folder picker
 - Play-event history (auto-pruned after one year)
-- Seekable live progress bar on the mini-player
-- Music-note placeholder wherever artwork is missing
 - First signed public release (APKs in [`release/`](release/))
 
 ### 1.1.0 — "Sound quality" *(2026-07-17)*
