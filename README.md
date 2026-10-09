@@ -32,6 +32,9 @@ Extracted colors are clamped for WCAG AA contrast before use — ugly artwork ca
 - Fast-scroll letter rail, per-tab sorting (persisted), paged lists that never load the full library into memory
 - Multi-select: long-press → add many songs to queue or playlist
 - Excluded folders (with subfolders) via system folder picker
+- **Learning library folder:** choose a folder such as `Music/Korean/` from Android's system folder picker; only audio files in that folder and its subfolders are added to the indexed library
+- The selected folder URI and its persisted Android access grant are kept across app restarts; change the folder or clear the selection in Library settings
+- The learning-folder filter currently supports folders on Android internal shared storage (`primary` volume)
 - "Ignore tracks shorter than N seconds" — kills voice notes and ringtones
 - Automatic incremental rescan when files change
 - **Play stats, favorites, playlists, and queue survive rescans** — reconciled by file, never by database id
