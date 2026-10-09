@@ -31,9 +31,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -185,8 +184,6 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
     val songCount by scanViewModel.songCount.collectAsStateWithLifecycle()
     val colors = ResonateTheme.colors
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
 
     Column(
         modifier = Modifier
@@ -266,23 +263,24 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
                     android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 try {
                     context.contentResolver.takePersistableUriPermission(treeUri, flags)
+                    val documentId = android.provider.DocumentsContract.getTreeDocumentId(treeUri)
                     val path = treePathOf(treeUri)
-                    if (path != null) {
+                    if (documentId.substringBefore(':') == "primary" && path != null) {
                         themeViewModel.update { it.copy(learningFolderTreeUri = treeUri.toString()) }
                         scanViewModel.rescan()
                     } else {
-                        scope.launch {
-                            snackbarHostState.showSnackbar(
-                                "Please choose a folder in internal shared storage."
-                            )
-                        }
+                        Toast.makeText(
+                            context,
+                            "Please choose a folder in internal shared storage.",
+                            Toast.LENGTH_LONG,
+                        ).show()
                     }
                 } catch (_: SecurityException) {
-                    scope.launch {
-                        snackbarHostState.showSnackbar(
-                            "Folder access could not be saved. Please choose the folder again."
-                        )
-                    }
+                    Toast.makeText(
+                        context,
+                        "Folder access could not be saved. Please choose the folder again.",
+                        Toast.LENGTH_LONG,
+                    ).show()
                 }
             }
         }
@@ -371,9 +369,7 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
                         scanViewModel.rescan()
                     }
                 } catch (_: SecurityException) {
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Folder access could not be saved.")
-                    }
+                    Toast.makeText(context, "Folder access could not be saved.", Toast.LENGTH_LONG).show()
                 }
             }
         }
