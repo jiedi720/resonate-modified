@@ -59,6 +59,9 @@ class LibraryRepository @Inject constructor(
             } catch (e: SecurityException) {
                 Log.w(TAG, "Scan failed: permission revoked", e)
                 _scanState.value = ScanState.Failed(e.message)
+            } catch (e: IllegalArgumentException) {
+                Log.w(TAG, "Scan failed: invalid learning folder selection", e)
+                _scanState.value = ScanState.Failed(e.message)
             }
         }
     }
