@@ -44,6 +44,8 @@ data class UserPrefs(
     // §2.7 Library
     val minDurationSec: Int = 30,
     val excludedFolders: List<String> = emptyList(),
+    /** Persisted SAF tree URI for the language-learning library. Null means use the normal library. */
+    val learningFolderTreeUri: String? = null,
     // §2.4 speed sheet
     val playbackSpeed: Float = 1f,
     val pitchCorrection: Boolean = true,
