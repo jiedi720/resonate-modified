@@ -48,6 +48,7 @@ class LibraryRepository @Inject constructor(
                 val total = scanner.fullScan(
                     minDurationSec = prefs.minDurationSec,
                     excludedFolders = prefs.excludedFolders,
+                    learningFolderTreeUri = prefs.learningFolderTreeUri,
                 ) { found ->
                     _scanState.value = ScanState.Scanning(found)
                 }
@@ -57,6 +58,9 @@ class LibraryRepository @Inject constructor(
                 _scanState.value = ScanState.Done(total, took)
             } catch (e: SecurityException) {
                 Log.w(TAG, "Scan failed: permission revoked", e)
+                _scanState.value = ScanState.Failed(e.message)
+            } catch (e: IllegalArgumentException) {
+                Log.w(TAG, "Scan failed: invalid learning folder selection", e)
                 _scanState.value = ScanState.Failed(e.message)
             }
         }
