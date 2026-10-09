@@ -31,6 +31,9 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -181,6 +184,9 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
     val prefs by themeViewModel.prefs.collectAsStateWithLifecycle()
     val songCount by scanViewModel.songCount.collectAsStateWithLifecycle()
     val colors = ResonateTheme.colors
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Column(
         modifier = Modifier
@@ -251,17 +257,123 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
             modifier = Modifier.padding(16.dp),
         )
 
-        // §2.7 excluded folders — pick with SAF, filter at scan time.
+        // Learning library folder: the selected SAF permission is persisted across restarts.
+        val learningFolderLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree()
+        ) { uri ->
+            uri?.let { treeUri ->
+                val flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                try {
+                    context.contentResolver.takePersistableUriPermission(treeUri, flags)
+                    val path = treePathOf(treeUri)
+                    if (path != null) {
+                        themeViewModel.update { it.copy(learningFolderTreeUri = treeUri.toString()) }
+                        scanViewModel.rescan()
+                    } else {
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                "Please choose a folder in internal shared storage."
+                            )
+                        }
+                    }
+                } catch (_: SecurityException) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            "Folder access could not be saved. Please choose the folder again."
+                        )
+                    }
+                }
+            }
+        }
+
+        Text(
+            text = "LEARNING LIBRARY FOLDER",
+            style = ResonateTheme.type.caption,
+            color = colors.muted,
+            modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp),
+        )
+        Text(
+            text = prefs.learningFolderTreeUri?.let { uri ->
+                treePathOf(android.net.Uri.parse(uri)) ?: "Selected folder (path unavailable)"
+            } ?: "Not set — the full music library is used",
+            style = ResonateTheme.type.body,
+            color = colors.bone,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .clickable { learningFolderLauncher.launch(null) }
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = null,
+                tint = colors.accent,
+            )
+            Text(
+                text = if (prefs.learningFolderTreeUri == null) "Choose learning folder"
+                else "Change learning folder",
+                style = ResonateTheme.type.title,
+                color = colors.bone,
+                modifier = Modifier.padding(start = 16.dp),
+            )
+        }
+        if (prefs.learningFolderTreeUri != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .clickable {
+                        themeViewModel.update { it.copy(learningFolderTreeUri = null) }
+                        scanViewModel.rescan()
+                    }
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = null,
+                    tint = colors.muted,
+                )
+                Text(
+                    text = "Clear learning folder (use full library)",
+                    style = ResonateTheme.type.title,
+                    color = colors.bone,
+                    modifier = Modifier.padding(start = 16.dp),
+                )
+            }
+        }
+        Text(
+            text = "Only audio in this folder and its subfolders will be indexed. The first version supports folders in internal shared storage.",
+            style = ResonateTheme.type.caption,
+            color = colors.muted,
+            modifier = Modifier.padding(16.dp),
+        )
+
+        // Existing excluded-folder controls remain available.
         val folderLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree()
         ) { uri ->
             uri?.let { treeUri ->
-                treePathOf(treeUri)?.let { path ->
-                    themeViewModel.update {
-                        if (path in it.excludedFolders) it
-                        else it.copy(excludedFolders = it.excludedFolders + path)
+                val flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                try {
+                    context.contentResolver.takePersistableUriPermission(treeUri, flags)
+                    treePathOf(treeUri)?.let { path ->
+                        themeViewModel.update {
+                            if (path in it.excludedFolders) it
+                            else it.copy(excludedFolders = it.excludedFolders + path)
+                        }
+                        scanViewModel.rescan()
                     }
-                    scanViewModel.rescan()
+                } catch (_: SecurityException) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Folder access could not be saved.")
+                    }
                 }
             }
         }
