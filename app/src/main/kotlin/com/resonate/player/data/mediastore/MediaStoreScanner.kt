@@ -6,6 +6,7 @@ import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.provider.DocumentsContract
 import com.resonate.player.data.db.AlbumEntity
 import com.resonate.player.data.db.ArtistEntity
 import com.resonate.player.data.db.FolderEntity
@@ -32,8 +33,13 @@ class MediaStoreScanner @Inject constructor(
     suspend fun fullScan(
         minDurationSec: Int,
         excludedFolders: List<String> = emptyList(),
+        learningFolderTreeUri: String? = null,
         onProgress: (found: Int) -> Unit,
     ): Int = withContext(Dispatchers.IO) {
+        val learningFolderPath = learningFolderTreeUri?.let(::sharedStoragePathFromTreeUri)
+        if (learningFolderTreeUri != null && learningFolderPath == null) {
+            throw IllegalArgumentException("Please select a folder in Android internal shared storage.")
+        }
         val songs = ArrayList<SongEntity>(1024)
         val albums = HashMap<Long, AlbumAggregate>()
         val artists = HashMap<Long, ArtistAggregate>()
@@ -75,10 +81,14 @@ class MediaStoreScanner @Inject constructor(
         )?.use { cursor ->
             val idx = ColumnIndices(cursor)
             while (cursor.moveToNext()) {
-                val song = cursor.toSong(idx) ?: continue
-                // §2.7: excluded folders (and their subfolders) never enter the index.
                 val fullPath = folderPathOf(idx, cursor)
+                // Include the selected directory and descendants only.
+                if (learningFolderPath != null && fullPath != learningFolderPath &&
+                    !fullPath.startsWith("$learningFolderPath/")
+                ) continue
+                // Excluded folders (and their subfolders) never enter the index.
                 if (excludedFolders.any { fullPath == it || fullPath.startsWith("$it/") }) continue
+                val song = cursor.toSong(idx) ?: continue
                 songs += song
 
                 albums.getOrPut(song.albumId) {
@@ -132,6 +142,21 @@ class MediaStoreScanner @Inject constructor(
             },
         )
         songs.size
+    }
+
+
+    /** SAF tree URI -> path for Android's primary shared-storage volume only. */
+    private fun sharedStoragePathFromTreeUri(rawUri: String): String? = try {
+        val uri = Uri.parse(rawUri)
+        if (uri.authority != "com.android.externalstorage.documents") return null
+        val documentId = DocumentsContract.getTreeDocumentId(uri)
+        if (documentId.substringBefore(':') != "primary") return null
+        val relative = documentId.substringAfter(':', "")
+        val parts = relative.trim('/').split('/').filter { it.isNotBlank() }
+        if (parts.any { it == "." || it == ".." }) return null
+        if (parts.isEmpty()) EXTERNAL_STORAGE_PREFIX else EXTERNAL_STORAGE_PREFIX + "/" + parts.joinToString("/")
+    } catch (_: Exception) {
+        null
     }
 
     private class ColumnIndices(cursor: Cursor) {
