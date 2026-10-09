@@ -48,6 +48,7 @@ class LibraryRepository @Inject constructor(
                 val total = scanner.fullScan(
                     minDurationSec = prefs.minDurationSec,
                     excludedFolders = prefs.excludedFolders,
+                    learningFolderTreeUri = prefs.learningFolderTreeUri,
                 ) { found ->
                     _scanState.value = ScanState.Scanning(found)
                 }
