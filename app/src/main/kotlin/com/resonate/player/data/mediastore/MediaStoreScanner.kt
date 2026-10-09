@@ -146,17 +146,20 @@ class MediaStoreScanner @Inject constructor(
 
 
     /** SAF tree URI -> path for Android's primary shared-storage volume only. */
-    private fun sharedStoragePathFromTreeUri(rawUri: String): String? = try {
-        val uri = Uri.parse(rawUri)
-        if (uri.authority != "com.android.externalstorage.documents") return null
-        val documentId = DocumentsContract.getTreeDocumentId(uri)
-        if (documentId.substringBefore(':') != "primary") return null
-        val relative = documentId.substringAfter(':', "")
-        val parts = relative.trim('/').split('/').filter { it.isNotBlank() }
-        if (parts.any { it == "." || it == ".." }) return null
-        if (parts.isEmpty()) EXTERNAL_STORAGE_PREFIX else EXTERNAL_STORAGE_PREFIX + "/" + parts.joinToString("/")
-    } catch (_: Exception) {
-        null
+    private fun sharedStoragePathFromTreeUri(rawUri: String): String? {
+        return try {
+            val uri = Uri.parse(rawUri)
+            if (uri.authority != "com.android.externalstorage.documents") return null
+            val documentId = DocumentsContract.getTreeDocumentId(uri)
+            if (documentId.substringBefore(':') != "primary") return null
+            val relative = documentId.substringAfter(':', "")
+            val parts = relative.trim('/').split('/').filter { it.isNotBlank() }
+            if (parts.any { it == "." || it == ".." }) return null
+            if (parts.isEmpty()) EXTERNAL_STORAGE_PREFIX
+            else EXTERNAL_STORAGE_PREFIX + "/" + parts.joinToString("/")
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private class ColumnIndices(cursor: Cursor) {
