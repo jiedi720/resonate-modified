@@ -271,7 +271,7 @@ class MediaStoreScanner @Inject constructor(
                     val documentId = DocumentsContract.getDocumentId(Uri.parse(uri))
                     val relative = documentId.substringAfter(':', "")
                     if (relative.isBlank()) "/storage/emulated/0" else "/storage/emulated/0/$relative".substringBeforeLast('/')
-                }.getOrDefault(rootPath)
+                }.getOrDefault("/storage/emulated/0")
             }
             FolderEntity(id = id, path = path, name = path.substringAfterLast('/'), songCount = group.size)
         }
