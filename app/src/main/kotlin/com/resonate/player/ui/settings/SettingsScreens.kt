@@ -450,7 +450,7 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
             modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 8.dp),
         )
         Text(
-            text = "Choose each destination manually. Keep the folders inside one of your selected learning library folders so moved audio remains visible in the library.",
+            text = "为每种语言分别添加对应状态目录。移动时会按音频原目录的上级路径匹配目标目录；请把这些目录放在已添加的学习库目录内。",
             style = ResonateTheme.type.caption,
             color = colors.muted,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
