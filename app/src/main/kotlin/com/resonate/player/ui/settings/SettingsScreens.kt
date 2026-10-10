@@ -299,6 +299,35 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
         }
 
         val learningFolderUris = (prefs.learningFolderTreeUris + listOfNotNull(prefs.learningFolderTreeUri)).distinct()
+
+        var statusFolderBeingConfigured by remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+        val statusFolderLauncher = rememberLauncherForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree()
+        ) { treeUri ->
+            val settingKey = statusFolderBeingConfigured
+            statusFolderBeingConfigured = null
+            if (treeUri != null && settingKey != null) {
+                try {
+                    val flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    context.contentResolver.takePersistableUriPermission(treeUri, flags)
+                    val path = treePathOf(treeUri)
+                    if (path == null) {
+                        Toast.makeText(context, "Please choose a folder in internal shared storage.", Toast.LENGTH_LONG).show()
+                    } else {
+                        themeViewModel.update {
+                            when (settingKey) {
+                                "mastered" -> it.copy(masteredFolderTreeUri = treeUri.toString())
+                                "learning" -> it.copy(learningInProgressFolderTreeUri = treeUri.toString())
+                                else -> it.copy(reviewFolderTreeUri = treeUri.toString())
+                            }
+                        }
+                    }
+                } catch (_: Exception) {
+                    Toast.makeText(context, "Folder access could not be saved. Please choose the folder again.", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
         Text(
             text = "LEARNING LIBRARY FOLDERS",
             style = ResonateTheme.type.caption,
@@ -394,6 +423,47 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
                 )
             }
         }
+        Text(
+            text = "LEARNING STATUS DESTINATION FOLDERS",
+            style = ResonateTheme.type.caption,
+            color = colors.muted,
+            modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 8.dp),
+        )
+        Text(
+            text = "Choose the destination for each status. Audio files will be moved to the selected folder when you change their status from the long-press menu.",
+            style = ResonateTheme.type.caption,
+            color = colors.muted,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+        listOf(
+            Triple("mastered", "已掌握", prefs.masteredFolderTreeUri),
+            Triple("learning", "未掌握 / 学习中", prefs.learningInProgressFolderTreeUri),
+            Triple("review", "再复习", prefs.reviewFolderTreeUri),
+        ).forEach { (key, label, selectedUri) ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        statusFolderBeingConfigured = key
+                        statusFolderLauncher.launch(selectedUri?.let(android.net.Uri::parse))
+                    }
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(label, style = ResonateTheme.type.title, color = colors.bone)
+                    Text(
+                        text = selectedUri?.let { treePathOf(android.net.Uri.parse(it)) } ?: "未设置，点击选择文件夹",
+                        style = ResonateTheme.type.caption,
+                        color = colors.muted,
+                        maxLines = 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
+                Icon(Icons.Filled.Add, contentDescription = "选择$label文件夹", tint = colors.accent)
+            }
+        }
+
         Text(
             text = "Audio in every selected folder and its subfolders will be indexed. Select folders in internal shared storage.",
             style = ResonateTheme.type.caption,
