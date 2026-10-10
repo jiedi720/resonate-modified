@@ -202,6 +202,9 @@ private fun SongsTab(
                             subtitle = song.artist,
                             duration = formatDuration(song.durationMs),
                             artworkUri = song.artworkUri,
+                            trailingMetadata = (if (song.dateModifiedSec > 0L) song.dateModifiedSec else song.dateAddedSec)
+                                .takeIf { it > 0L }
+                                ?.let { java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date(it * 1000L)) },
                             supported = song.isSupported,
                             selected = selectedSongs.containsKey(song.id),
                             onClick = {
