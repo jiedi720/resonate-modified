@@ -225,7 +225,7 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            val options = listOf(0, 15, 30, 60, 120)
+            val options = listOf(0, 1, 15, 30, 60, 120)
             items(count = options.size, key = { options[it] }) { i ->
                 val seconds = options[i]
                 FilterChip(
