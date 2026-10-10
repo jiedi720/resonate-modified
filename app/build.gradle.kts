@@ -56,12 +56,14 @@ android {
     }
 
     // §6: per-ABI splits keep each APK under the size budget.
+    // arm64-only: armeabi-v7a and x86_64 are no longer shipped, and no
+    // universal APK is produced.
     splits {
         abi {
             isEnable = true
             reset()
-            include("arm64-v8a", "armeabi-v7a", "x86_64")
-            isUniversalApk = true
+            include("arm64-v8a")
+            isUniversalApk = false
         }
     }
 
