@@ -305,14 +305,47 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
             color = colors.muted,
             modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp),
         )
-        Text(
-            text = learningFolderUris.takeIf { it.isNotEmpty() }?.joinToString("\n") { uri ->
-                treePathOf(android.net.Uri.parse(uri)) ?: "Selected folder (path unavailable)"
-            } ?: "Not set — choose one or more folders to scan",
-            style = ResonateTheme.type.body,
-            color = colors.bone,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        )
+        if (learningFolderUris.isEmpty()) {
+            Text(
+                text = "Not set — choose one or more folders to scan",
+                style = ResonateTheme.type.body,
+                color = colors.bone,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        } else {
+            Column {
+                learningFolderUris.forEach { selectedUri ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = treePathOf(android.net.Uri.parse(selectedUri)) ?: "Selected folder (path unavailable)",
+                            style = ResonateTheme.type.body,
+                            color = colors.bone,
+                            modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+                        )
+                        IconButton(onClick = {
+                            themeViewModel.update {
+                                val remaining = (it.learningFolderTreeUris + listOfNotNull(it.learningFolderTreeUri))
+                                    .distinct().filterNot { uri -> uri == selectedUri }
+                                it.copy(learningFolderTreeUris = remaining, learningFolderTreeUri = null)
+                            }.invokeOnCompletion { cause ->
+                                if (cause == null) scanViewModel.rescan()
+                            }
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Remove selected folder",
+                                tint = colors.muted,
+                            )
+                        }
+                    }
+                }
+            }
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
