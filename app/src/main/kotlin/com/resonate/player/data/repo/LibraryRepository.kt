@@ -39,7 +39,7 @@ class LibraryRepository @Inject constructor(
         // Never silently index the whole device on first launch. The user must
         // explicitly choose a folder before the first library scan.
         val prefs = prefsStore.prefs.first()
-        if (prefs.learningFolderTreeUri != null && songDao.count() == 0) rescan()
+        if ((prefs.learningFolderTreeUris.isNotEmpty() || prefs.learningFolderTreeUri != null) && songDao.count() == 0) rescan()
     }
 
     suspend fun rescan() {
@@ -49,15 +49,15 @@ class LibraryRepository @Inject constructor(
             try {
                 val prefs = prefsStore.prefs.first()
                 // No selected folder means no scan; do not fall back to a full-device scan.
-                val selectedTree = prefs.learningFolderTreeUri
-                if (selectedTree == null) {
+                val selectedTrees = (prefs.learningFolderTreeUris + listOfNotNull(prefs.learningFolderTreeUri)).distinct()
+                if (selectedTrees.isEmpty()) {
                     _scanState.value = ScanState.Idle
                     return
                 }
                 val total = scanner.fullScan(
                     minDurationSec = if (prefs.durationFilterExplicitlySet) prefs.minDurationSec else 0,
                     excludedFolders = prefs.excludedFolders,
-                    learningFolderTreeUri = prefs.learningFolderTreeUri,
+                    learningFolderTreeUri = selectedTrees.joinToString("\n"),
                 ) { found ->
                     _scanState.value = ScanState.Scanning(found)
                 }
