@@ -201,6 +201,32 @@ private fun SongsTab(
         }
     }
 
+    fun moveSongToStatusFolder(song: Song, destinationTreeUri: String?, statusLabel: String) {
+        if (destinationTreeUri.isNullOrBlank()) {
+            Toast.makeText(context, "请先在设置 > 媒体库中选择「$statusLabel」目标文件夹。", Toast.LENGTH_LONG).show()
+            return
+        }
+        try {
+            val sourceUri = Uri.parse(song.uri)
+            val sourceDocumentId = DocumentsContract.getDocumentId(sourceUri)
+            val sourceParentId = sourceDocumentId.substringBeforeLast('/', missingDelimiterValue = "")
+            require(sourceParentId.isNotBlank()) { "无法确定音频文件所在目录。" }
+            val sourceParent = DocumentsContract.buildDocumentUriUsingTree(sourceUri, sourceParentId)
+            val destinationTree = Uri.parse(destinationTreeUri)
+            val destinationId = DocumentsContract.getTreeDocumentId(destinationTree)
+            val destinationParent = DocumentsContract.buildDocumentUriUsingTree(destinationTree, destinationId)
+            val moved = DocumentsContract.moveDocument(context.contentResolver, sourceUri, sourceParent, destinationParent)
+            if (moved != null) {
+                Toast.makeText(context, "已标记为「$statusLabel」并移动文件。", Toast.LENGTH_SHORT).show()
+                contextSong = null
+                scanViewModel.rescan()
+            } else {
+                Toast.makeText(context, "移动失败，请确认目标文件夹可写。", Toast.LENGTH_LONG).show()
+            }
+        } catch (error: Exception) {
+            Toast.makeText(context, "移动失败：" + (error.message ?: "文件夹权限不可用"), Toast.LENGTH_LONG).show()
+        }
+    }
     // Long press opens the track menu; multi-select remains available from that menu.
     val selectedSongs = remember { androidx.compose.runtime.mutableStateMapOf<Long, Song>() }
     val selectionMode = selectedSongs.isNotEmpty()
@@ -356,12 +382,19 @@ private fun SongsTab(
                 }
             },
             confirmButton = {
-                Row {
-                    TextButton(onClick = {
-                        selectedSongs[menuSong.id] = menuSong
-                        contextSong = null
-                    }) { Text("Select for queue") }
-                    TextButton(onClick = { moveFolderLauncher.launch(null) }) { Text("Move file") }
+                Column(horizontalAlignment = Alignment.End) {
+                    Row {
+                        TextButton(onClick = {
+                            selectedSongs[menuSong.id] = menuSong
+                            contextSong = null
+                        }) { Text("Select for queue") }
+                        TextButton(onClick = { moveFolderLauncher.launch(null) }) { Text("Move file") }
+                    }
+                    Row {
+                        TextButton(onClick = { moveSongToStatusFolder(menuSong, prefs.masteredFolderTreeUri, "已掌握") }) { Text("已掌握") }
+                        TextButton(onClick = { moveSongToStatusFolder(menuSong, prefs.learningInProgressFolderTreeUri, "未掌握") }) { Text("未掌握") }
+                        TextButton(onClick = { moveSongToStatusFolder(menuSong, prefs.reviewFolderTreeUri, "再复习") }) { Text("再复习") }
+                    }
                 }
             },
             dismissButton = {
