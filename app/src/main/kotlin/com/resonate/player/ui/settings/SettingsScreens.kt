@@ -266,8 +266,13 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
                     val documentId = android.provider.DocumentsContract.getTreeDocumentId(treeUri)
                     val path = treePathOf(treeUri)
                     if (documentId.substringBefore(':') == "primary" && path != null) {
-                        themeViewModel.update { it.copy(learningFolderTreeUri = treeUri.toString()) }
-                        scanViewModel.rescan()
+                        // Persist the selected directory before starting the scan; otherwise
+                        // the scanner can read the previous preference and scan the wrong scope.
+                        themeViewModel.update {
+                            it.copy(learningFolderTreeUri = treeUri.toString())
+                        }.invokeOnCompletion { cause ->
+                            if (cause == null) scanViewModel.rescan()
+                        }
                     } else {
                         Toast.makeText(
                             context,
@@ -326,8 +331,11 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
                     .fillMaxWidth()
                     .height(56.dp)
                     .clickable {
-                        themeViewModel.update { it.copy(learningFolderTreeUri = null) }
-                        scanViewModel.rescan()
+                        themeViewModel.update {
+                            it.copy(learningFolderTreeUri = null)
+                        }.invokeOnCompletion { cause ->
+                            if (cause == null) scanViewModel.rescan()
+                        }
                     }
                     .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
