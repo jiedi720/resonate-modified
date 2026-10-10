@@ -326,10 +326,20 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
                         ).show()
                     } else {
                         themeViewModel.update {
+                            val selected = treeUri.toString()
                             when (settingKey) {
-                                "mastered" -> it.copy(masteredFolderTreeUri = treeUri.toString())
-                                "learning" -> it.copy(learningInProgressFolderTreeUri = treeUri.toString())
-                                else -> it.copy(reviewFolderTreeUri = treeUri.toString())
+                                "mastered" -> it.copy(
+                                    masteredFolderTreeUris = (it.masteredFolderTreeUris + listOfNotNull(it.masteredFolderTreeUri) + selected).distinct(),
+                                    masteredFolderTreeUri = null,
+                                )
+                                "learning" -> it.copy(
+                                    learningInProgressFolderTreeUris = (it.learningInProgressFolderTreeUris + listOfNotNull(it.learningInProgressFolderTreeUri) + selected).distinct(),
+                                    learningInProgressFolderTreeUri = null,
+                                )
+                                else -> it.copy(
+                                    reviewFolderTreeUris = (it.reviewFolderTreeUris + listOfNotNull(it.reviewFolderTreeUri) + selected).distinct(),
+                                    reviewFolderTreeUri = null,
+                                )
                             }
                         }
                     }
@@ -446,31 +456,66 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
         )
         listOf(
-            Triple("mastered", "已掌握", prefs.masteredFolderTreeUri),
-            Triple("learning", "未掌握 / 学习中", prefs.learningInProgressFolderTreeUri),
-            Triple("review", "再复习", prefs.reviewFolderTreeUri),
-        ).forEach { (key, label, selectedUri) ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        statusFolderBeingConfigured = key
-                        statusFolderLauncher.launch(selectedUri?.let(android.net.Uri::parse))
+            Triple("mastered", "已掌握", (prefs.masteredFolderTreeUris + listOfNotNull(prefs.masteredFolderTreeUri)).distinct()),
+            Triple("learning", "未掌握 / 学习中", (prefs.learningInProgressFolderTreeUris + listOfNotNull(prefs.learningInProgressFolderTreeUri)).distinct()),
+            Triple("review", "再复习", (prefs.reviewFolderTreeUris + listOfNotNull(prefs.reviewFolderTreeUri)).distinct()),
+        ).forEach { (key, label, selectedUris) ->
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            statusFolderBeingConfigured = key
+                            statusFolderLauncher.launch(selectedUris.lastOrNull()?.let(android.net.Uri::parse))
+                        }
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(label, style = ResonateTheme.type.title, color = colors.bone)
+                        Text(
+                            text = if (selectedUris.isEmpty()) "未设置，点击添加文件夹" else "已配置 ${selectedUris.size} 个目录；点击可继续添加",
+                            style = ResonateTheme.type.caption,
+                            color = colors.muted,
+                        )
                     }
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(label, style = ResonateTheme.type.title, color = colors.bone)
-                    Text(
-                        text = selectedUri?.let { treePathOf(android.net.Uri.parse(it)) } ?: "未设置，点击选择文件夹",
-                        style = ResonateTheme.type.caption,
-                        color = colors.muted,
-                        maxLines = 2,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    )
+                    Icon(Icons.Filled.Add, contentDescription = "添加$label文件夹", tint = colors.accent)
                 }
-                Icon(Icons.Filled.Add, contentDescription = "选择$label文件夹", tint = colors.accent)
+                selectedUris.forEach { selectedUri ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(start = 28.dp, end = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = treePathOf(android.net.Uri.parse(selectedUri)) ?: "目录路径不可用",
+                            style = ResonateTheme.type.caption,
+                            color = colors.muted,
+                            modifier = Modifier.weight(1f).padding(vertical = 5.dp),
+                            maxLines = 2,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        )
+                        IconButton(onClick = {
+                            themeViewModel.update {
+                                when (key) {
+                                    "mastered" -> it.copy(
+                                        masteredFolderTreeUris = it.masteredFolderTreeUris.filterNot { uri -> uri == selectedUri },
+                                        masteredFolderTreeUri = it.masteredFolderTreeUri.takeUnless { uri -> uri == selectedUri },
+                                    )
+                                    "learning" -> it.copy(
+                                        learningInProgressFolderTreeUris = it.learningInProgressFolderTreeUris.filterNot { uri -> uri == selectedUri },
+                                        learningInProgressFolderTreeUri = it.learningInProgressFolderTreeUri.takeUnless { uri -> uri == selectedUri },
+                                    )
+                                    else -> it.copy(
+                                        reviewFolderTreeUris = it.reviewFolderTreeUris.filterNot { uri -> uri == selectedUri },
+                                        reviewFolderTreeUri = it.reviewFolderTreeUri.takeUnless { uri -> uri == selectedUri },
+                                    )
+                                }
+                            }
+                        }) {
+                            Icon(Icons.Filled.Close, contentDescription = "移除目录", tint = colors.muted)
+                        }
+                    }
+                }
             }
         }
 
