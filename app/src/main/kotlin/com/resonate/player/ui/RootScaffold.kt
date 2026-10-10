@@ -39,11 +39,14 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,6 +69,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.resonate.player.R
 import com.resonate.player.data.repo.ScanState
+import com.resonate.player.ui.theme.ThemeViewModel
 import com.resonate.player.ui.components.MiniPlayer
 import com.resonate.player.ui.components.Responsive
 import com.resonate.player.ui.home.HomeScreen
@@ -127,6 +131,41 @@ fun RootScaffold() {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
     val playbackViewModel: PlaybackViewModel = hiltViewModel()
+    val themeViewModel: ThemeViewModel = hiltViewModel()
+    val prefs by themeViewModel.prefs.collectAsStateWithLifecycle()
+    val scanViewModel: LibraryScanViewModel = hiltViewModel()
+    var showFirstFolderPrompt by remember { mutableStateOf(false) }
+    LaunchedEffect(prefs.initialFolderSetupCompleted, prefs.learningFolderTreeUri) {
+        showFirstFolderPrompt = !prefs.initialFolderSetupCompleted && prefs.learningFolderTreeUri == null
+    }
+    val firstFolderLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                contentResolver.takePersistableUriPermission(uri, flags)
+                val documentId = android.provider.DocumentsContract.getTreeDocumentId(uri)
+                if (documentId.substringBefore(':') != "primary") {
+                    android.widget.Toast.makeText(
+                        this, "Please choose a folder in internal shared storage.", android.widget.Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    themeViewModel.update {
+                        it.copy(learningFolderTreeUri = uri.toString(), initialFolderSetupCompleted = true)
+                    }.invokeOnCompletion { cause ->
+                        if (cause == null) scanViewModel.rescan()
+                    }
+                    showFirstFolderPrompt = false
+                }
+            } catch (_: SecurityException) {
+                android.widget.Toast.makeText(
+                    this, "Folder access could not be saved. Please choose the folder again.",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
 
     // §9: POST_NOTIFICATIONS is runtime on 33+ — ask once, at first play intent.
     val context = LocalContext.current
@@ -181,6 +220,28 @@ fun RootScaffold() {
             onExpandPlayer = { nowPlayingOpen = true },
         )
         // §1.4 motion: mini-player → Now Playing expand, 400ms emphasized easing.
+        if (showFirstFolderPrompt) {
+            AlertDialog(
+                onDismissRequest = { },
+                title = { Text(stringResource(R.string.first_folder_title)) },
+                text = { Text(stringResource(R.string.first_folder_body)) },
+                confirmButton = {
+                    TextButton(onClick = { firstFolderLauncher.launch(null) }) {
+                        Text(stringResource(R.string.first_folder_choose))
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            themeViewModel.update { it.copy(initialFolderSetupCompleted = true) }
+                            showFirstFolderPrompt = false
+                        }
+                    ) {
+                        Text(stringResource(R.string.first_folder_later))
+                    }
+                },
+            )
+        }
         AnimatedVisibility(
             visible = nowPlayingOpen,
             enter = slideInVertically(
