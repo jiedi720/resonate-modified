@@ -19,6 +19,8 @@ data class Song(
     val isSupported: Boolean,
     val artworkUri: String?,
     val fileName: String,
+    val dateAddedSec: Long = 0L,
+    val dateModifiedSec: Long = 0L,
 )
 
 @Immutable
