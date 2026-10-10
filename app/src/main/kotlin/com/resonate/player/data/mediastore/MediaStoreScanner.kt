@@ -36,7 +36,15 @@ class MediaStoreScanner @Inject constructor(
         learningFolderTreeUri: String? = null,
         onProgress: (found: Int) -> Unit,
     ): Int = withContext(Dispatchers.IO) {
-        val learningFolderPath = learningFolderTreeUri?.let(::sharedStoragePathFromTreeUri)
+        if (learningFolderTreeUri != null) {
+            return@withContext scanSelectedTree(
+                treeUri = Uri.parse(learningFolderTreeUri),
+                minDurationSec = minDurationSec,
+                excludedFolders = excludedFolders,
+                onProgress = onProgress,
+            )
+        }
+        val learningFolderPath: String? = null
         if (learningFolderTreeUri != null && learningFolderPath == null) {
             throw IllegalArgumentException("Please select a folder in Android internal shared storage.")
         }
@@ -152,6 +160,184 @@ class MediaStoreScanner @Inject constructor(
         songs.size
     }
 
+
+    /**
+     * Scan the selected SAF tree itself instead of relying on MediaStore's index.
+     * This finds audio files in nested folders even when Android has not indexed them.
+     */
+    private suspend fun scanSelectedTree(
+        treeUri: Uri,
+        minDurationSec: Int,
+        excludedFolders: List<String>,
+        onProgress: (found: Int) -> Unit,
+    ): Int {
+        val rootDocumentId = try {
+            DocumentsContract.getTreeDocumentId(treeUri)
+        } catch (e: Exception) {
+            throw IllegalArgumentException("The selected folder permission is invalid. Please select it again.", e)
+        }
+        val rootPath = sharedStoragePathFromTreeUri(treeUri.toString())
+            ?: throw IllegalArgumentException("Please select a folder in Android internal shared storage.")
+        val songs = ArrayList<SongEntity>()
+        val visited = HashSet<String>()
+        var inspected = 0
+
+        fun walk(documentId: String, relativeParts: List<String>) {
+            if (!visited.add(documentId)) return
+            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, documentId)
+            context.contentResolver.query(
+                childrenUri,
+                arrayOf(
+                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                    DocumentsContract.Document.COLUMN_MIME_TYPE,
+                    DocumentsContract.Document.COLUMN_SIZE,
+                    DocumentsContract.Document.COLUMN_LAST_MODIFIED,
+                ),
+                null,
+                null,
+                null,
+            )?.use { cursor ->
+                val idColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                val nameColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                val mimeColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE)
+                val sizeColumn = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_SIZE)
+                val modifiedColumn = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+                while (cursor.moveToNext()) {
+                    val childId = cursor.getString(idColumn) ?: continue
+                    val name = cursor.getString(nameColumn) ?: continue
+                    val mime = if (cursor.isNull(mimeColumn)) "" else cursor.getString(mimeColumn).orEmpty()
+                    val childParts = relativeParts + name
+                    val path = "$rootPath/" + childParts.joinToString("/")
+                    if (excludedFolders.any { path == it || path.startsWith("$it/") }) continue
+
+                    if (mime == DocumentsContract.Document.MIME_TYPE_DIR) {
+                        walk(childId, childParts)
+                        continue
+                    }
+                    if (!isAudioDocument(name, mime)) continue
+
+                    val documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, childId)
+                    inspected++
+                    val song = runCatching {
+                        songFromDocument(
+                            uri = documentUri,
+                            name = name,
+                            mimeType = mime,
+                            sizeBytes = if (sizeColumn >= 0 && !cursor.isNull(sizeColumn)) cursor.getLong(sizeColumn) else 0L,
+                            modifiedMillis = if (modifiedColumn >= 0 && !cursor.isNull(modifiedColumn)) cursor.getLong(modifiedColumn) else 0L,
+                            folderPath = path.substringBeforeLast('/'),
+                            relativePath = childParts.dropLast(1).joinToString("/"),
+                        )
+                    }.getOrNull() ?: continue
+                    if (song.durationMs < minDurationSec * 1000L) continue
+                    songs += song
+                    if (songs.size % 50 == 0) onProgress(songs.size)
+                }
+            } ?: throw IllegalStateException("Cannot read the selected folder. Please choose it again and grant access.")
+        }
+
+        walk(rootDocumentId, emptyList())
+        onProgress(songs.size)
+
+        val albums = songs.groupBy { it.albumId }.map { (id, group) ->
+            val first = group.first()
+            AlbumEntity(
+                id = id,
+                name = first.albumName,
+                artistId = first.artistId,
+                artistName = first.artistName,
+                year = group.maxOfOrNull { it.year } ?: 0,
+                songCount = group.size,
+                artworkUri = null,
+                chromaPrimary = null,
+                chromaSecondary = null,
+                chromaOnColor = null,
+            )
+        }
+        val artists = songs.groupBy { it.artistId }.map { (id, group) ->
+            ArtistEntity(id = id, name = group.first().artistName, albumCount = group.map { it.albumId }.distinct().size, songCount = group.size)
+        }
+        val folders = songs.groupBy { it.folderId }.map { (id, group) ->
+            val path = group.first().uri.let { uri ->
+                // Keep a human-readable path in the folder browser, independent of document IDs.
+                runCatching {
+                    val documentId = DocumentsContract.getDocumentId(Uri.parse(uri))
+                    val relative = documentId.substringAfter(':', "")
+                    if (relative.isBlank()) rootPath else "/storage/emulated/0/$relative".substringBeforeLast('/')
+                }.getOrDefault(rootPath)
+            }
+            FolderEntity(id = id, path = path, name = path.substringAfterLast('/'), songCount = group.size)
+        }
+        val genres = emptyList<GenreEntity>()
+        db.replaceLibrary(songs = songs, albums = albums, artists = artists, folders = folders, genres = genres)
+        return songs.size
+    }
+
+    private fun isAudioDocument(name: String, mimeType: String): Boolean {
+        if (mimeType.startsWith("audio/", ignoreCase = true)) return true
+        return name.substringAfterLast('.', "").lowercase() in setOf(
+            "mp3", "m4a", "m4b", "aac", "flac", "wav", "ogg", "opus", "oga",
+            "wma", "ape", "wv", "tta", "aif", "aiff", "dsf", "dff", "mid", "midi",
+        )
+    }
+
+    private fun songFromDocument(
+        uri: Uri,
+        name: String,
+        mimeType: String,
+        sizeBytes: Long,
+        modifiedMillis: Long,
+        folderPath: String,
+        relativePath: String,
+    ): SongEntity {
+        val retriever = android.media.MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(context, uri)
+            fun meta(key: Int): String = retriever.extractMetadata(key).orEmpty()
+            val duration = meta(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION).toLongOrNull() ?: 0L
+            val title = meta(android.media.MediaMetadataRetriever.METADATA_KEY_TITLE).ifBlank { name.substringBeforeLast('.', name) }
+            val artist = meta(android.media.MediaMetadataRetriever.METADATA_KEY_ARTIST).ifBlank { "<unknown>" }
+            val album = meta(android.media.MediaMetadataRetriever.METADATA_KEY_ALBUM).ifBlank { "<unknown>" }
+            val year = meta(android.media.MediaMetadataRetriever.METADATA_KEY_YEAR).take(4).toIntOrNull() ?: 0
+            val track = meta(android.media.MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER).substringBefore('/').toIntOrNull() ?: 0
+            val actualMime = meta(android.media.MediaMetadataRetriever.METADATA_KEY_MIMETYPE).ifBlank { mimeType }
+            val id = stableId(uri.toString())
+            val albumId = stableId("$artist\u0000$album")
+            val artistId = stableId(artist)
+            return SongEntity(
+                id = id,
+                uri = uri.toString(),
+                title = title,
+                trackNumber = track,
+                discNumber = 1,
+                year = year,
+                durationMs = duration,
+                dateAddedSec = modifiedMillis / 1000L,
+                dateModifiedSec = modifiedMillis / 1000L,
+                albumId = albumId,
+                artistId = artistId,
+                folderId = folderIdOf(folderPath),
+                genreId = null,
+                sizeBytes = sizeBytes,
+                mimeType = actualMime,
+                bitrate = meta(android.media.MediaMetadataRetriever.METADATA_KEY_BITRATE).toIntOrNull(),
+                sampleRate = null,
+                isSupported = isMimeSupported(actualMime),
+                relativePath = relativePath,
+                fileName = name,
+                albumName = album,
+                artistName = artist,
+            )
+        } finally {
+            retriever.release()
+        }
+    }
+
+    private fun stableId(value: String): Long {
+        val hash = value.hashCode().toLong()
+        return if (hash == 0L) Long.MIN_VALUE else -kotlin.math.abs(hash)
+    }
 
     /** SAF tree URI -> path for Android's primary shared-storage volume only. */
     private fun sharedStoragePathFromTreeUri(rawUri: String): String? {
