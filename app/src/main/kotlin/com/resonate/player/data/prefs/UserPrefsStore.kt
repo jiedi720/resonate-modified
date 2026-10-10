@@ -42,7 +42,12 @@ data class UserPrefs(
     val amoledBlack: Boolean = false,
     val materialYou: Boolean = false,
     // §2.7 Library
-    // Default to indexing every audio file, including short tracks.\n    val minDurationSec: Int = 0,\n    /** True after the first-run folder prompt has been answered. */\n    val initialFolderSetupCompleted: Boolean = false,
+    // Default to indexing every audio file, including short tracks.
+    val minDurationSec: Int = 0,
+    /** False means no explicit duration filter has been chosen; include short tracks. */
+    val durationFilterExplicitlySet: Boolean = false,
+    /** True after the first-run folder prompt has been answered. */
+    val initialFolderSetupCompleted: Boolean = false,
     val excludedFolders: List<String> = emptyList(),
     /** Persisted SAF tree URI for the language-learning library. Null means use the normal library. */
     val learningFolderTreeUri: String? = null,
