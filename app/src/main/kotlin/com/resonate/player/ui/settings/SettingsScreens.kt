@@ -274,7 +274,7 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
                         // the scanner can read the previous preference and scan the wrong scope.
                         themeViewModel.update {
                             it.copy(
-                                learningFolderTreeUris = (it.learningFolderTreeUris + treeUri.toString()).distinct(),
+                                learningFolderTreeUris = (it.learningFolderTreeUris + listOfNotNull(it.learningFolderTreeUri) + treeUri.toString()).distinct(),
                                 learningFolderTreeUri = null,
                                 initialFolderSetupCompleted = true,
                             )
