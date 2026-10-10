@@ -303,7 +303,7 @@ private fun SongsTab(
                             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("File name", fileNameWithoutExtension))
                             fileNameCopied = true
                             scope.launch {
-                                delay(1200)
+                                delay(1000)
                                 fileNameCopied = false
                             }
                         },
