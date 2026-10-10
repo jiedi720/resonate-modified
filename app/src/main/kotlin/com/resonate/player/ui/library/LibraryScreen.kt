@@ -73,6 +73,7 @@ import com.resonate.player.ui.components.TrackRow
 import com.resonate.player.ui.components.TrackRowPlaceholder
 import com.resonate.player.ui.playlist.PlaylistsTabContent
 import com.resonate.player.ui.theme.ResonateTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val subTabs = listOf(
@@ -276,6 +277,7 @@ private fun SongsTab(
 
     val menuSong = contextSong
     if (menuSong != null) {
+        var fileNameCopied by remember(menuSong.id) { mutableStateOf(false) }
         AlertDialog(
             onDismissRequest = { contextSong = null },
             title = {
@@ -299,13 +301,17 @@ private fun SongsTab(
                         onClick = {
                             val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("File name", fileNameWithoutExtension))
-                            Toast.makeText(context, "File name copied", Toast.LENGTH_SHORT).show()
+                            fileNameCopied = true
+                            scope.launch {
+                                delay(1200)
+                                fileNameCopied = false
+                            }
                         },
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.ContentCopy,
-                            contentDescription = "Copy file name",
-                            tint = ResonateTheme.colors.muted,
+                            imageVector = if (fileNameCopied) Icons.Filled.Check else Icons.Filled.ContentCopy,
+                            contentDescription = if (fileNameCopied) "File name copied" else "Copy file name",
+                            tint = if (fileNameCopied) androidx.compose.ui.graphics.Color.Green else ResonateTheme.colors.muted,
                         )
                     }
                 }
