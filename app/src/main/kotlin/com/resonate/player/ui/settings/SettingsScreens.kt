@@ -315,6 +315,15 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
                     val path = treePathOf(treeUri)
                     if (path == null) {
                         Toast.makeText(context, "Please choose a folder in internal shared storage.", Toast.LENGTH_LONG).show()
+                    } else if (learningFolderUris.none { selected ->
+                            val rootPath = treePathOf(android.net.Uri.parse(selected))
+                            rootPath != null && (path == rootPath || path.startsWith("$rootPath/"))
+                        }) {
+                        Toast.makeText(
+                            context,
+                            "Please choose a destination inside one of your selected learning library folders so the audio stays in the library.",
+                            Toast.LENGTH_LONG,
+                        ).show()
                     } else {
                         themeViewModel.update {
                             when (settingKey) {
@@ -431,7 +440,7 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
             modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 8.dp),
         )
         Text(
-            text = "Choose the destination for each status. Audio files will be moved to the selected folder when you change their status from the long-press menu.",
+            text = "Choose each destination manually. Keep the folders inside one of your selected learning library folders so moved audio remains visible in the library.",
             style = ResonateTheme.type.caption,
             color = colors.muted,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
