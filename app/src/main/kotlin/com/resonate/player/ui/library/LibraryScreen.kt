@@ -201,9 +201,14 @@ private fun SongsTab(
         }
     }
 
-    fun moveSongToStatusFolder(song: Song, destinationTreeUri: String?, statusLabel: String) {
-        if (destinationTreeUri.isNullOrBlank()) {
-            Toast.makeText(context, "请先在设置 > 媒体库中选择「$statusLabel」目标文件夹。", Toast.LENGTH_LONG).show()
+    fun moveSongToStatusFolder(song: Song, statusKey: String, statusLabel: String) {
+        val configuredUris = when (statusKey) {
+            "mastered" -> (prefs.masteredFolderTreeUris + listOfNotNull(prefs.masteredFolderTreeUri)).distinct()
+            "learning" -> (prefs.learningInProgressFolderTreeUris + listOfNotNull(prefs.learningInProgressFolderTreeUri)).distinct()
+            else -> (prefs.reviewFolderTreeUris + listOfNotNull(prefs.reviewFolderTreeUri)).distinct()
+        }
+        if (configuredUris.isEmpty()) {
+            Toast.makeText(context, "请先在设置 > 媒体库中为「$statusLabel」添加目标文件夹。", Toast.LENGTH_LONG).show()
             return
         }
         try {
@@ -211,8 +216,27 @@ private fun SongsTab(
             val sourceDocumentId = DocumentsContract.getDocumentId(sourceUri)
             val sourceParentId = sourceDocumentId.substringBeforeLast('/', missingDelimiterValue = "")
             require(sourceParentId.isNotBlank()) { "无法确定音频文件所在目录。" }
+            val sourceParentPath = sourceParentId.substringAfter(':', "")
+            val sourceGroupPath = sourceParentPath.substringBeforeLast('/', missingDelimiterValue = "")
+            require(sourceGroupPath.isNotBlank()) { "无法判断该语言对应的状态目录，请检查目录结构。" }
+
+            // Match a target directory by its parent path, so each language keeps its own
+            // sibling status folders (e.g. 听背韩语/音声[未掌握] -> 听背韩语/音声[已掌握]).
+            val matchingDestination = configuredUris.firstOrNull { treeUriString ->
+                val targetPath = runCatching { treePathOf(Uri.parse(treeUriString)) }.getOrNull()
+                targetPath != null && targetPath.substringBeforeLast('/', missingDelimiterValue = "") == sourceGroupPath
+            }
+            if (matchingDestination == null) {
+                Toast.makeText(
+                    context,
+                    "未找到与当前音频目录同属一个上级目录的「$statusLabel」文件夹。请在设置中添加该语言对应的目录。",
+                    Toast.LENGTH_LONG,
+                ).show()
+                return
+            }
+
             val sourceParent = DocumentsContract.buildDocumentUriUsingTree(sourceUri, sourceParentId)
-            val destinationTree = Uri.parse(destinationTreeUri)
+            val destinationTree = Uri.parse(matchingDestination)
             val destinationId = DocumentsContract.getTreeDocumentId(destinationTree)
             val destinationParent = DocumentsContract.buildDocumentUriUsingTree(destinationTree, destinationId)
             val moved = DocumentsContract.moveDocument(context.contentResolver, sourceUri, sourceParent, destinationParent)
@@ -391,9 +415,9 @@ private fun SongsTab(
                         TextButton(onClick = { moveFolderLauncher.launch(null) }) { Text("Move file") }
                     }
                     Row {
-                        TextButton(onClick = { moveSongToStatusFolder(menuSong, prefs.masteredFolderTreeUri, "已掌握") }) { Text("已掌握") }
-                        TextButton(onClick = { moveSongToStatusFolder(menuSong, prefs.learningInProgressFolderTreeUri, "未掌握") }) { Text("未掌握") }
-                        TextButton(onClick = { moveSongToStatusFolder(menuSong, prefs.reviewFolderTreeUri, "再复习") }) { Text("再复习") }
+                        TextButton(onClick = { moveSongToStatusFolder(menuSong, "mastered", "已掌握") }) { Text("已掌握") }
+                        TextButton(onClick = { moveSongToStatusFolder(menuSong, "learning", "未掌握") }) { Text("未掌握") }
+                        TextButton(onClick = { moveSongToStatusFolder(menuSong, "review", "再复习") }) { Text("再复习") }
                     }
                 }
             },
