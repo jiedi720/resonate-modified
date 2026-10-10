@@ -72,10 +72,18 @@ class MediaStoreScanner @Inject constructor(
             }
         }.toTypedArray()
 
+        // A user-selected learning folder is an explicit audio source, so do not
+        // require MediaStore's IS_MUSIC flag: recordings and other audio files in
+        // the folder may be indexed by Android without being classified as music.
+        val selection = if (learningFolderPath != null) {
+            "${MediaStore.Audio.Media.DURATION} >= ?"
+        } else {
+            "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= ?"
+        }
         context.contentResolver.query(
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
             projection,
-            "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= ?",
+            selection,
             arrayOf((minDurationSec * 1000L).toString()),
             null,
         )?.use { cursor ->
