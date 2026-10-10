@@ -37,11 +37,12 @@ fun TrackRow(
     supported: Boolean = true,
     onLongClick: (() -> Unit)? = null,
     selected: Boolean = false,
+    trailingMetadata: String? = null,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(64.dp)
+            .height(80.dp)
             .then(
                 if (selected) {
                     Modifier.background(com.resonate.player.ui.theme.ResonateTheme.colors.surfaceRaised)
@@ -68,16 +69,30 @@ fun TrackRow(
                 text = title,
                 style = ResonateTheme.type.title,
                 color = ResonateTheme.colors.bone,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = if (supported) subtitle else stringResource(R.string.unsupported_format),
-                style = ResonateTheme.type.body,
-                color = ResonateTheme.colors.muted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val visibleSubtitle = if (supported) subtitle.takeUnless { it.equals("<unknown>", ignoreCase = true) } else stringResource(R.string.unsupported_format)
+                if (!visibleSubtitle.isNullOrBlank()) {
+                    Text(
+                        text = visibleSubtitle,
+                        style = ResonateTheme.type.body,
+                        color = ResonateTheme.colors.muted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = trailingMetadata == null),
+                    )
+                }
+                if (!trailingMetadata.isNullOrBlank()) {
+                    Text(
+                        text = trailingMetadata,
+                        style = ResonateTheme.type.caption,
+                        color = ResonateTheme.colors.muted,
+                        maxLines = 1,
+                    )
+                }
+            }
         }
         Text(
             text = duration,
