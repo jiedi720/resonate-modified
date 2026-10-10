@@ -36,7 +36,10 @@ class LibraryRepository @Inject constructor(
     private val scanMutex = Mutex()
 
     suspend fun scanIfEmpty() {
-        if (songDao.count() == 0) rescan()
+        // Never silently index the whole device on first launch. The user must
+        // explicitly choose a folder before the first library scan.
+        val prefs = prefsStore.prefs.first()
+        if (prefs.learningFolderTreeUri != null && songDao.count() == 0) rescan()
     }
 
     suspend fun rescan() {
