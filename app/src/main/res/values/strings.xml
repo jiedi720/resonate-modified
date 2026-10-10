@@ -125,7 +125,11 @@
     <!-- Library settings -->
     <string name="library_min_duration">Ignore tracks shorter than</string>
     <string name="library_min_duration_hint">Keeps voice notes and ringtones out of your library. Takes effect on the next rescan.</string>
-    <string name="duration_all">Everything</string>
+    <string name="duration_all">Don’t ignore short tracks</string>
+    <string name="first_folder_title">Choose your music folder</string>
+    <string name="first_folder_body">Resonate won’t scan your whole device. Choose a folder to scan, including all its subfolders.</string>
+    <string name="first_folder_choose">Choose folder</string>
+    <string name="first_folder_later">Not now</string>
     <string name="duration_seconds">%1$ds</string>
 
     <!-- Equalizer -->
