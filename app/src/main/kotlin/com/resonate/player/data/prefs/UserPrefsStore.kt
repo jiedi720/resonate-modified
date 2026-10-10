@@ -16,7 +16,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-enum class SortField { TITLE, ARTIST, ALBUM, DATE_ADDED, DURATION, PLAY_COUNT, NAME, SONG_COUNT, YEAR }
+enum class SortField { TITLE, ARTIST, ALBUM, DATE_ADDED, DATE_MODIFIED, DURATION, PLAY_COUNT, NAME, SONG_COUNT, YEAR }
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
