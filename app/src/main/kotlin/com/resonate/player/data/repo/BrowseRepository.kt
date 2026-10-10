@@ -94,6 +94,7 @@ class BrowseRepository @Inject constructor(
             SortField.ARTIST -> "s.artistName COLLATE NOCASE $direction, s.title COLLATE NOCASE ASC"
             SortField.ALBUM -> "s.albumName COLLATE NOCASE $direction, s.discNumber ASC, s.trackNumber ASC"
             SortField.DATE_ADDED -> "s.dateAddedSec $direction"
+            SortField.DATE_MODIFIED -> "s.dateModifiedSec $direction"
             SortField.DURATION -> "s.durationMs $direction"
             SortField.PLAY_COUNT -> "COALESCE(p.playCount, 0) $direction, s.title COLLATE NOCASE ASC"
             else -> "s.title COLLATE NOCASE $direction"
