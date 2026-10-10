@@ -132,6 +132,7 @@ fun RootScaffold() {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
     val playbackViewModel: PlaybackViewModel = hiltViewModel()
+    val context = LocalContext.current
     val themeViewModel: ThemeViewModel = hiltViewModel()
     val prefs by themeViewModel.prefs.collectAsStateWithLifecycle()
     val scanViewModel: LibraryScanViewModel = hiltViewModel()
@@ -145,11 +146,11 @@ fun RootScaffold() {
         if (uri != null) {
             try {
                 val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                contentResolver.takePersistableUriPermission(uri, flags)
+                context.contentResolver.takePersistableUriPermission(uri, flags)
                 val documentId = android.provider.DocumentsContract.getTreeDocumentId(uri)
                 if (documentId.substringBefore(':') != "primary") {
                     android.widget.Toast.makeText(
-                        this, "Please choose a folder in internal shared storage.", android.widget.Toast.LENGTH_LONG
+                        context, "Please choose a folder in internal shared storage.", android.widget.Toast.LENGTH_LONG
                     ).show()
                 } else {
                     themeViewModel.update {
@@ -161,7 +162,7 @@ fun RootScaffold() {
                 }
             } catch (_: SecurityException) {
                 android.widget.Toast.makeText(
-                    this, "Folder access could not be saved. Please choose the folder again.",
+                    context, "Folder access could not be saved. Please choose the folder again.",
                     android.widget.Toast.LENGTH_LONG
                 ).show()
             }
@@ -169,7 +170,6 @@ fun RootScaffold() {
     }
 
     // §9: POST_NOTIFICATIONS is runtime on 33+ — ask once, at first play intent.
-    val context = LocalContext.current
     val notificationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { }
