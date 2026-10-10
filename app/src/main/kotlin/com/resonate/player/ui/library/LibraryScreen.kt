@@ -381,7 +381,7 @@ private fun SongsTab(
                     }
                 }
                 Text(
-                    text = "▶  播放 \${contextPlayCount?.toString() ?: "…"} 次    ·    时长 \${formatDuration(menuSong.durationMs)}",
+                    text = "▶  播放 ${contextPlayCount?.toString() ?: "…"} 次    ·    时长 ${formatDuration(menuSong.durationMs)}",
                     style = ResonateTheme.type.body,
                     color = ResonateTheme.colors.accent,
                 )
@@ -402,7 +402,7 @@ private fun SongsTab(
                     )
                 }
                 Text(
-                    text = "大小 \${formatFileSize(menuSong.sizeBytes)}   ·   修改于 \${formatFileDate(menuSong.dateModifiedSec)}",
+                    text = "大小 ${formatFileSize(menuSong.sizeBytes)}   ·   修改于 ${formatFileDate(menuSong.dateModifiedSec)}",
                     style = ResonateTheme.type.caption,
                     color = ResonateTheme.colors.muted,
                 )
