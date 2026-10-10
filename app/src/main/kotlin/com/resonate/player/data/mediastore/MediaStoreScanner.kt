@@ -230,9 +230,10 @@ class MediaStoreScanner @Inject constructor(
                             relativePath = childParts.dropLast(1).joinToString("/"),
                         )
                     }.getOrNull() ?: continue
-                    // If a provider cannot expose metadata, keep the file indexed rather
-                    // than silently dropping it; known durations still obey the setting.
-                    if (song.durationMs > 0L && song.durationMs < minDurationSec * 1000L) continue
+                    // With the default "don't ignore" option, keep even files whose
+                    // duration metadata is unavailable. A manually selected threshold
+                    // excludes both short tracks and files whose duration cannot be read.
+                    if (minDurationSec > 0 && song.durationMs < minDurationSec * 1000L) continue
                     songs += song
                     if (songs.size % 50 == 0) onProgress(songs.size)
                 }
