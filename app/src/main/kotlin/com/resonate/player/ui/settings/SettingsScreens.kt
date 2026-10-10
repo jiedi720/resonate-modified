@@ -269,7 +269,10 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
                         // Persist the selected directory before starting the scan; otherwise
                         // the scanner can read the previous preference and scan the wrong scope.
                         themeViewModel.update {
-                            it.copy(learningFolderTreeUri = treeUri.toString())
+                            it.copy(
+                                learningFolderTreeUri = treeUri.toString(),
+                                initialFolderSetupCompleted = true,
+                            )
                         }.invokeOnCompletion { cause ->
                             if (cause == null) scanViewModel.rescan()
                         }
@@ -299,7 +302,7 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
         Text(
             text = prefs.learningFolderTreeUri?.let { uri ->
                 treePathOf(android.net.Uri.parse(uri)) ?: "Selected folder (path unavailable)"
-            } ?: "Not set — the full music library is used",
+            } ?: "Not set — choose a folder to scan",
             style = ResonateTheme.type.body,
             color = colors.bone,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -346,7 +349,7 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
                     tint = colors.muted,
                 )
                 Text(
-                    text = "Clear learning folder (use full library)",
+                    text = "Clear learning folder (stop scanning)",
                     style = ResonateTheme.type.title,
                     color = colors.bone,
                     modifier = Modifier.padding(start = 16.dp),
