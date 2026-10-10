@@ -49,7 +49,9 @@ data class UserPrefs(
     /** True after the first-run folder prompt has been answered. */
     val initialFolderSetupCompleted: Boolean = false,
     val excludedFolders: List<String> = emptyList(),
-    /** Persisted SAF tree URI for the language-learning library. Null means use the normal library. */
+    /** Persisted SAF tree URIs for the learning library; each tree and its descendants are scanned. */
+    val learningFolderTreeUris: List<String> = emptyList(),
+    /** Legacy single-folder preference, retained to migrate existing installs. */
     val learningFolderTreeUri: String? = null,
     // §2.4 speed sheet
     val playbackSpeed: Float = 1f,
