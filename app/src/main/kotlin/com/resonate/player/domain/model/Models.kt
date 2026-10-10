@@ -21,6 +21,7 @@ data class Song(
     val fileName: String,
     val dateAddedSec: Long = 0L,
     val dateModifiedSec: Long = 0L,
+    val sizeBytes: Long = 0L,
 )
 
 @Immutable
