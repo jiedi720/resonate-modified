@@ -48,6 +48,12 @@ class LibraryRepository @Inject constructor(
             val started = SystemClock.elapsedRealtime()
             try {
                 val prefs = prefsStore.prefs.first()
+                // No selected folder means no scan; do not fall back to a full-device scan.
+                val selectedTree = prefs.learningFolderTreeUri
+                if (selectedTree == null) {
+                    _scanState.value = ScanState.Idle
+                    return
+                }
                 val total = scanner.fullScan(
                     minDurationSec = prefs.minDurationSec,
                     excludedFolders = prefs.excludedFolders,
