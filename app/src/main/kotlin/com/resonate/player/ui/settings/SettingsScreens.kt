@@ -229,8 +229,12 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
             items(count = options.size, key = { options[it] }) { i ->
                 val seconds = options[i]
                 FilterChip(
-                    selected = prefs.minDurationSec == seconds,
-                    onClick = { themeViewModel.update { it.copy(minDurationSec = seconds) } },
+                    selected = (if (prefs.durationFilterExplicitlySet) prefs.minDurationSec else 0) == seconds,
+                    onClick = {
+                        themeViewModel.update {
+                            it.copy(minDurationSec = seconds, durationFilterExplicitlySet = true)
+                        }
+                    },
                     shape = CircleShape,
                     label = {
                         Text(
