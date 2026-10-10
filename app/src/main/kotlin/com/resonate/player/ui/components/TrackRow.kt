@@ -39,6 +39,7 @@ fun TrackRow(
     onLongClick: (() -> Unit)? = null,
     selected: Boolean = false,
     trailingMetadata: String? = null,
+    playCountMetadata: String? = null,
 ) {
     Row(
         modifier = modifier
@@ -86,6 +87,14 @@ fun TrackRow(
                     )
                 } else if (!trailingMetadata.isNullOrBlank()) {
                     Spacer(modifier = Modifier.weight(1f))
+                }
+                if (!playCountMetadata.isNullOrBlank()) {
+                    Text(
+                        text = playCountMetadata,
+                        style = ResonateTheme.type.caption,
+                        color = ResonateTheme.colors.muted,
+                        maxLines = 1,
+                    )
                 }
                 if (!trailingMetadata.isNullOrBlank()) {
                     Text(
