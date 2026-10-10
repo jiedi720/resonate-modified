@@ -29,6 +29,7 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
@@ -277,7 +278,38 @@ private fun SongsTab(
     if (menuSong != null) {
         AlertDialog(
             onDismissRequest = { contextSong = null },
-            title = { Text(menuSong.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+            title = {
+                val fileNameWithoutExtension = menuSong.fileName.substringAfterLast('/').let { name ->
+                    val extensionDot = name.lastIndexOf('.')
+                    if (extensionDot > 0) name.substring(0, extensionDot) else name
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = fileNameWithoutExtension,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        style = ResonateTheme.type.body,
+                        color = ResonateTheme.colors.bone,
+                    )
+                    IconButton(
+                        onClick = {
+                            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("File name", fileNameWithoutExtension))
+                            Toast.makeText(context, "File name copied", Toast.LENGTH_SHORT).show()
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.ContentCopy,
+                            contentDescription = "Copy file name",
+                            tint = ResonateTheme.colors.muted,
+                        )
+                    }
+                }
+            },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
