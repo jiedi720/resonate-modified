@@ -55,7 +55,7 @@ class LibraryRepository @Inject constructor(
                     return
                 }
                 val total = scanner.fullScan(
-                    minDurationSec = prefs.minDurationSec,
+                    minDurationSec = if (prefs.durationFilterExplicitlySet) prefs.minDurationSec else 0,
                     excludedFolders = prefs.excludedFolders,
                     learningFolderTreeUri = prefs.learningFolderTreeUri,
                 ) { found ->
