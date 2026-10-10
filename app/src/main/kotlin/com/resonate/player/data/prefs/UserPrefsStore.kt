@@ -57,6 +57,10 @@ data class UserPrefs(
     val masteredFolderTreeUri: String? = null,
     val learningInProgressFolderTreeUri: String? = null,
     val reviewFolderTreeUri: String? = null,
+    /** Multiple per-language status folders. Legacy single-folder fields above remain readable. */
+    val masteredFolderTreeUris: List<String> = emptyList(),
+    val learningInProgressFolderTreeUris: List<String> = emptyList(),
+    val reviewFolderTreeUris: List<String> = emptyList(),
     // §2.4 speed sheet
     val playbackSpeed: Float = 1f,
     val pitchCorrection: Boolean = true,
