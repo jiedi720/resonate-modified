@@ -217,8 +217,13 @@ private fun SongsTab(
             val sourceParentId = sourceDocumentId.substringBeforeLast('/', missingDelimiterValue = "")
             require(sourceParentId.isNotBlank()) { "无法确定音频文件所在目录。" }
             val sourceParentPath = sourceParentId.substringAfter(':', "")
-            val sourceGroupPath = sourceParentPath.substringBeforeLast('/', missingDelimiterValue = "")
-            require(sourceGroupPath.isNotBlank()) { "无法判断该语言对应的状态目录，请检查目录结构。" }
+            val sourceGroupRelativePath = sourceParentPath.substringBeforeLast('/', missingDelimiterValue = "")
+            require(sourceGroupRelativePath.isNotBlank()) { "无法判断该语言对应的状态目录，请检查目录结构。" }
+            val sourceVolume = sourceParentId.substringBefore(':', "primary")
+            val sourceGroupPath = when (sourceVolume) {
+                "primary" -> "/storage/emulated/0/$sourceGroupRelativePath"
+                else -> "/storage/$sourceVolume/$sourceGroupRelativePath"
+            }
 
             // Match a target directory by its parent path, so each language keeps its own
             // sibling status folders (e.g. 听背韩语/音声[未掌握] -> 听背韩语/音声[已掌握]).
