@@ -352,7 +352,7 @@ class MediaStoreScanner @Inject constructor(
                 durationMs = 0L,
                 dateAddedSec = modifiedMillis / 1000L,
                 dateModifiedSec = modifiedMillis / 1000L,
-                albumId = stableId("$artist\\u0000$album"),
+                albumId = stableId("$artist\u0000$album"),
                 artistId = stableId(artist),
                 folderId = folderIdOf(folderPath),
                 genreId = null,
@@ -372,8 +372,12 @@ class MediaStoreScanner @Inject constructor(
     }
 
     private fun stableId(value: String): Long {
-        val hash = value.hashCode().toLong()
-        return if (hash == 0L) Long.MIN_VALUE else -kotlin.math.abs(hash)
+        // Use a 64-bit digest-derived key to avoid collisions between thousands
+        // of files; SAF-backed songs need stable IDs just like MediaStore songs.
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(value.toByteArray(Charsets.UTF_8))
+        val positive = java.nio.ByteBuffer.wrap(digest, 0, Long.SIZE_BYTES).long and Long.MAX_VALUE
+        return if (positive == 0L) Long.MIN_VALUE else -positive
     }
 
     /** SAF tree URI -> path for Android's primary shared-storage volume only. */
