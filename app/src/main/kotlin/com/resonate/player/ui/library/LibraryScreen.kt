@@ -41,6 +41,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -174,7 +175,9 @@ private fun SongsTab(
         ActivityResultContracts.OpenDocumentTree()
     ) { destinationTree ->
         val song = contextSong
-        if (destinationTree != null && song != null) {
+        if (destinationTree == null) {
+            contextSong = null
+        } else if (song != null) {
             try {
                 val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 context.contentResolver.takePersistableUriPermission(destinationTree, flags)
@@ -298,14 +301,16 @@ private fun SongsTab(
                 ) { index ->
                     val song = songs[index]
                     if (song != null) {
+                        var rowPlayCount by remember(song.id) { mutableStateOf<Int?>(null) }
+                        LaunchedEffect(song.id) { rowPlayCount = viewModel.playCount(song.id) }
                         TrackRow(
                             title = song.title,
                             subtitle = song.artist,
                             duration = formatDuration(song.durationMs),
                             artworkUri = song.artworkUri,
-                            trailingMetadata = (if (song.dateAddedSec > 0L) song.dateAddedSec else song.dateModifiedSec)
-                                .takeIf { it > 0L }
+                            trailingMetadata = song.dateModifiedSec.takeIf { it > 0L }
                                 ?.let { java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date(it * 1000L)) },
+                            playCountMetadata = rowPlayCount?.let { "▶ $it" } ?: "▶ …",
                             supported = song.isSupported,
                             selected = selectedSongs.containsKey(song.id),
                             onClick = {
@@ -333,103 +338,114 @@ private fun SongsTab(
     val menuSong = contextSong
     if (menuSong != null) {
         var fileNameCopied by remember(menuSong.id) { mutableStateOf(false) }
-        AlertDialog(
+        val fileNameWithoutExtension = menuSong.fileName.substringAfterLast('/').let { name ->
+            val extensionDot = name.lastIndexOf('.')
+            if (extensionDot > 0) name.substring(0, extensionDot) else name
+        }
+        ModalBottomSheet(
             onDismissRequest = { contextSong = null },
-            title = {
-                val fileNameWithoutExtension = menuSong.fileName.substringAfterLast('/').let { name ->
-                    val extensionDot = name.lastIndexOf('.')
-                    if (extensionDot > 0) name.substring(0, extensionDot) else name
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = fileNameWithoutExtension,
-                        modifier = Modifier.weight(1f),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        style = ResonateTheme.type.body,
-                        color = ResonateTheme.colors.bone,
-                    )
-                    IconButton(
-                        onClick = {
-                            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("File name", fileNameWithoutExtension))
-                            fileNameCopied = true
-                            scope.launch {
-                                delay(1000)
-                                fileNameCopied = false
-                            }
-                        },
-                    ) {
+            containerColor = ResonateTheme.colors.surface,
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = fileNameWithoutExtension,
+                            style = ResonateTheme.type.title,
+                            color = ResonateTheme.colors.bone,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        val artist = menuSong.artist.takeUnless { it.equals("<unknown>", ignoreCase = true) }
+                        if (!artist.isNullOrBlank()) {
+                            Text(artist, style = ResonateTheme.type.caption, color = ResonateTheme.colors.muted)
+                        }
+                    }
+                    IconButton(onClick = {
+                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("File name", fileNameWithoutExtension))
+                        fileNameCopied = true
+                        scope.launch {
+                            delay(1000)
+                            fileNameCopied = false
+                        }
+                    }) {
                         Icon(
                             imageVector = if (fileNameCopied) Icons.Filled.Check else Icons.Filled.ContentCopy,
-                            contentDescription = if (fileNameCopied) "File name copied" else "Copy file name",
+                            contentDescription = if (fileNameCopied) "文件名已复制" else "复制文件名",
                             tint = if (fileNameCopied) androidx.compose.ui.graphics.Color.Green else ResonateTheme.colors.muted,
                         )
                     }
                 }
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = "Played ${contextPlayCount?.toString() ?: "…"} times",
-                        style = ResonateTheme.type.body,
-                        color = ResonateTheme.colors.muted,
-                    )
-                    val artist = menuSong.artist.takeUnless { it.equals("<unknown>", ignoreCase = true) }
-                    if (!artist.isNullOrBlank()) {
-                        Text("Artist: $artist", style = ResonateTheme.type.body, color = ResonateTheme.colors.bone)
-                    }
-                    Text("File name: ${menuSong.fileName}", style = ResonateTheme.type.body, color = ResonateTheme.colors.bone)
-                    Text("File size: ${formatFileSize(menuSong.sizeBytes)}", style = ResonateTheme.type.body, color = ResonateTheme.colors.bone)
-                    Text(
-                        "Created: Not provided by Android storage",
-                        style = ResonateTheme.type.body,
-                        color = ResonateTheme.colors.muted,
-                    )
-                    Text(
-                        "Added to library: ${formatFileDate(menuSong.dateAddedSec)}",
-                        style = ResonateTheme.type.body,
-                        color = ResonateTheme.colors.bone,
-                    )
-                    Text(
-                        "Last modified: ${formatFileDate(menuSong.dateModifiedSec)}",
-                        style = ResonateTheme.type.body,
-                        color = ResonateTheme.colors.bone,
-                    )
-                    Text("Duration: ${formatDuration(menuSong.durationMs)}", style = ResonateTheme.type.body, color = ResonateTheme.colors.bone)
+                Text(
+                    text = "▶  播放 \${contextPlayCount?.toString() ?: "…"} 次    ·    时长 \${formatDuration(menuSong.durationMs)}",
+                    style = ResonateTheme.type.body,
+                    color = ResonateTheme.colors.accent,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Folder, contentDescription = null, tint = ResonateTheme.colors.muted, modifier = Modifier.size(18.dp))
                     val fileLocation = runCatching {
                         val documentId = DocumentsContract.getDocumentId(Uri.parse(menuSong.uri))
                         val relative = documentId.substringAfter(':', "")
                         if (relative.isBlank()) "/storage/emulated/0" else "/storage/emulated/0/$relative"
                     }.getOrNull()
-                    if (!fileLocation.isNullOrBlank()) {
-                        Text("Location: $fileLocation", style = ResonateTheme.type.body, color = ResonateTheme.colors.bone)
-                    }
+                    Text(
+                        text = fileLocation ?: "文件位置不可用",
+                        style = ResonateTheme.type.caption,
+                        color = ResonateTheme.colors.muted,
+                        modifier = Modifier.padding(start = 8.dp).weight(1f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
-            },
-            confirmButton = {
-                Column(horizontalAlignment = Alignment.End) {
-                    Row {
-                        TextButton(onClick = {
+                Text(
+                    text = "大小 \${formatFileSize(menuSong.sizeBytes)}   ·   修改于 \${formatFileDate(menuSong.dateModifiedSec)}",
+                    style = ResonateTheme.type.caption,
+                    color = ResonateTheme.colors.muted,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TextButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = {
                             selectedSongs[menuSong.id] = menuSong
                             contextSong = null
-                        }) { Text("Select for queue") }
-                        TextButton(onClick = { moveFolderLauncher.launch(null) }) { Text("Move file") }
-                    }
-                    Row {
-                        TextButton(onClick = { moveSongToStatusFolder(menuSong, "mastered", "已掌握") }) { Text("已掌握") }
-                        TextButton(onClick = { moveSongToStatusFolder(menuSong, "learning", "未掌握") }) { Text("未掌握") }
-                        TextButton(onClick = { moveSongToStatusFolder(menuSong, "review", "再复习") }) { Text("再复习") }
-                    }
+                        },
+                    ) { Text("加入队列") }
+                    TextButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = { moveFolderLauncher.launch(null) },
+                    ) { Text("移动文件…") }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { contextSong = null }) { Text("Close") }
-            },
-        )
+                Text("学习状态", style = ResonateTheme.type.caption, color = ResonateTheme.colors.muted)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    TextButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = { moveSongToStatusFolder(menuSong, "mastered", "已掌握") },
+                    ) { Text("✓ 已掌握") }
+                    TextButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = { moveSongToStatusFolder(menuSong, "learning", "未掌握") },
+                    ) { Text("未掌握") }
+                    TextButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = { moveSongToStatusFolder(menuSong, "review", "再复习") },
+                    ) { Text("再复习") }
+                }
+                TextButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { contextSong = null },
+                ) { Text("关闭") }
+            }
+        }
     }
 }
 
@@ -621,14 +637,26 @@ private fun FoldersTab(viewModel: LibraryBrowseViewModel, onSongClick: (Song) ->
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         currentPath?.let { path ->
             item(key = "breadcrumb", contentType = "breadcrumb") {
-                Text(
-                    text = path,
-                    style = ResonateTheme.type.caption,
-                    color = ResonateTheme.colors.muted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable { viewModel.navigateFolderUp() }
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Folder,
+                        contentDescription = "返回上级目录",
+                        tint = ResonateTheme.colors.accent,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        text = "返回上级目录  ·  $path",
+                        style = ResonateTheme.type.caption,
+                        color = ResonateTheme.colors.muted,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(start = 10.dp).weight(1f),
+                    )
+                }
             }
         }
         items(
@@ -782,6 +810,7 @@ private val songSortOptions = listOf(
     SortOption(SortField.ARTIST, R.string.sort_artist),
     SortOption(SortField.ALBUM, R.string.sort_album),
     SortOption(SortField.DATE_ADDED, R.string.sort_date_added),
+    SortOption(SortField.DATE_MODIFIED, R.string.sort_date_modified),
     SortOption(SortField.DURATION, R.string.sort_duration),
     SortOption(SortField.PLAY_COUNT, R.string.sort_play_count),
 )
