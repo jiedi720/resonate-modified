@@ -53,6 +53,10 @@ data class UserPrefs(
     val learningFolderTreeUris: List<String> = emptyList(),
     /** Legacy single-folder preference, retained to migrate existing installs. */
     val learningFolderTreeUri: String? = null,
+    /** User-selected SAF destinations for foreign-language learning status moves. */
+    val masteredFolderTreeUri: String? = null,
+    val learningInProgressFolderTreeUri: String? = null,
+    val reviewFolderTreeUri: String? = null,
     // §2.4 speed sheet
     val playbackSpeed: Float = 1f,
     val pitchCorrection: Boolean = true,
