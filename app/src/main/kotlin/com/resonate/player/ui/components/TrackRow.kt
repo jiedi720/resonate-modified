@@ -84,7 +84,6 @@ fun TrackRow(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
-                }
                 } else if (!trailingMetadata.isNullOrBlank()) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
