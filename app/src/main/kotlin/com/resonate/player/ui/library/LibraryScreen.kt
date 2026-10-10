@@ -279,7 +279,7 @@ private fun SongsTab(
             onDismissRequest = { contextSong = null },
             title = { Text(menuSong.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
             text = {
-                Column {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         text = "Played ${contextPlayCount?.toString() ?: "…"} times",
                         style = ResonateTheme.type.body,
@@ -287,7 +287,33 @@ private fun SongsTab(
                     )
                     val artist = menuSong.artist.takeUnless { it.equals("<unknown>", ignoreCase = true) }
                     if (!artist.isNullOrBlank()) {
-                        Text(artist, style = ResonateTheme.type.caption, color = ResonateTheme.colors.muted)
+                        Text("Artist: $artist", style = ResonateTheme.type.body, color = ResonateTheme.colors.bone)
+                    }
+                    Text("File name: ${menuSong.fileName}", style = ResonateTheme.type.body, color = ResonateTheme.colors.bone)
+                    Text("File size: ${formatFileSize(menuSong.sizeBytes)}", style = ResonateTheme.type.body, color = ResonateTheme.colors.bone)
+                    Text(
+                        "Created: Not provided by Android storage",
+                        style = ResonateTheme.type.body,
+                        color = ResonateTheme.colors.muted,
+                    )
+                    Text(
+                        "Added to library: ${formatFileDate(menuSong.dateAddedSec)}",
+                        style = ResonateTheme.type.body,
+                        color = ResonateTheme.colors.bone,
+                    )
+                    Text(
+                        "Last modified: ${formatFileDate(menuSong.dateModifiedSec)}",
+                        style = ResonateTheme.type.body,
+                        color = ResonateTheme.colors.bone,
+                    )
+                    Text("Duration: ${formatDuration(menuSong.durationMs)}", style = ResonateTheme.type.body, color = ResonateTheme.colors.bone)
+                    val fileLocation = runCatching {
+                        val documentId = DocumentsContract.getDocumentId(Uri.parse(menuSong.uri))
+                        val relative = documentId.substringAfter(':', "")
+                        if (relative.isBlank()) "/storage/emulated/0" else "/storage/emulated/0/$relative"
+                    }.getOrNull()
+                    if (!fileLocation.isNullOrBlank()) {
+                        Text("Location: $fileLocation", style = ResonateTheme.type.body, color = ResonateTheme.colors.bone)
                     }
                 }
             },
@@ -305,6 +331,24 @@ private fun SongsTab(
             },
         )
     }
+}
+
+private fun formatFileDate(epochSeconds: Long): String {
+    if (epochSeconds <= 0L) return "Unavailable"
+    return java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+        .format(java.util.Date(epochSeconds * 1000L))
+}
+
+private fun formatFileSize(bytes: Long): String {
+    if (bytes <= 0L) return "Unknown"
+    val units = arrayOf("B", "KB", "MB", "GB", "TB")
+    var size = bytes.toDouble()
+    var unit = 0
+    while (size >= 1024.0 && unit < units.lastIndex) {
+        size /= 1024.0
+        unit++
+    }
+    return if (unit == 0) "${size.toLong()} ${units[unit]}" else String.format(java.util.Locale.getDefault(), "%.2f %s", size, units[unit])
 }
 
 @Composable
