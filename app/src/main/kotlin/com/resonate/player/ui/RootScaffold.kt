@@ -137,8 +137,8 @@ fun RootScaffold() {
     val prefs by themeViewModel.prefs.collectAsStateWithLifecycle()
     val scanViewModel: LibraryScanViewModel = hiltViewModel()
     var showFirstFolderPrompt by remember { mutableStateOf(false) }
-    LaunchedEffect(prefs.initialFolderSetupCompleted, prefs.learningFolderTreeUri) {
-        showFirstFolderPrompt = !prefs.initialFolderSetupCompleted && prefs.learningFolderTreeUri == null
+    LaunchedEffect(prefs.initialFolderSetupCompleted, prefs.learningFolderTreeUris, prefs.learningFolderTreeUri) {
+        showFirstFolderPrompt = !prefs.initialFolderSetupCompleted && prefs.learningFolderTreeUris.isEmpty() && prefs.learningFolderTreeUri == null
     }
     val firstFolderLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
@@ -154,7 +154,7 @@ fun RootScaffold() {
                     ).show()
                 } else {
                     themeViewModel.update {
-                        it.copy(learningFolderTreeUri = uri.toString(), initialFolderSetupCompleted = true)
+                        it.copy(learningFolderTreeUris = (it.learningFolderTreeUris + uri.toString()).distinct(), learningFolderTreeUri = null, initialFolderSetupCompleted = true)
                     }.invokeOnCompletion { cause ->
                         if (cause == null) scanViewModel.rescan()
                     }
