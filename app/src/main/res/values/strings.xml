@@ -84,6 +84,7 @@
     <string name="sort_artist">Artist</string>
     <string name="sort_album">Album</string>
     <string name="sort_date_added">Date added</string>
+    <string name="sort_date_modified">Last modified</string>
     <string name="sort_duration">Duration</string>
     <string name="sort_play_count">Play count</string>
     <string name="sort_name">Name</string>
