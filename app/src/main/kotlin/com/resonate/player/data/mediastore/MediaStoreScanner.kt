@@ -319,7 +319,7 @@ class MediaStoreScanner @Inject constructor(
                 discNumber = 1,
                 year = year,
                 durationMs = duration,
-                dateAddedSec = modifiedMillis / 1000L,
+                dateAddedSec = 0L,
                 dateModifiedSec = modifiedMillis / 1000L,
                 albumId = albumId,
                 artistId = artistId,
