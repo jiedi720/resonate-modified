@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Check
@@ -390,7 +391,7 @@ private fun SongsTab(
                     Icon(Icons.Filled.Folder, contentDescription = null, tint = ResonateTheme.colors.muted, modifier = Modifier.size(18.dp))
                     val fileLocation = runCatching {
                         val documentId = DocumentsContract.getDocumentId(Uri.parse(menuSong.uri))
-                        val relative = documentId.substringAfter(':', "")
+                        val relative = documentId.substringAfter(':', "").substringBeforeLast('/', missingDelimiterValue = "")
                         if (relative.isBlank()) "/storage/emulated/0" else "/storage/emulated/0/$relative"
                     }.getOrNull()
                     Text(
@@ -644,7 +645,7 @@ private fun FoldersTab(viewModel: LibraryBrowseViewModel, onSongClick: (Song) ->
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Folder,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "返回上级目录",
                         tint = ResonateTheme.colors.accent,
                         modifier = Modifier.size(20.dp),
