@@ -243,9 +243,10 @@ class MediaStoreScanner @Inject constructor(
                 ?: throw IllegalArgumentException("Please select a folder in Android internal shared storage.")
             walk(treeUri, rootPath, rootDocumentId, emptyList())
         }
-        onProgress(songs.size)
+        val uniqueSongs = songs.distinctBy { it.id }
+        onProgress(uniqueSongs.size)
 
-        val albums = songs.groupBy { it.albumId }.map { (id, group) ->
+        val albums = uniqueSongs.groupBy { it.albumId }.map { (id, group) ->
             val first = group.first()
             AlbumEntity(
                 id = id,
@@ -260,10 +261,10 @@ class MediaStoreScanner @Inject constructor(
                 chromaOnColor = null,
             )
         }
-        val artists = songs.groupBy { it.artistId }.map { (id, group) ->
+        val artists = uniqueSongs.groupBy { it.artistId }.map { (id, group) ->
             ArtistEntity(id = id, name = group.first().artistName, albumCount = group.map { it.albumId }.distinct().size, songCount = group.size)
         }
-        val folders = songs.groupBy { it.folderId }.map { (id, group) ->
+        val folders = uniqueSongs.groupBy { it.folderId }.map { (id, group) ->
             val path = group.first().uri.let { uri ->
                 // Keep a human-readable path in the folder browser, independent of document IDs.
                 runCatching {
@@ -275,8 +276,8 @@ class MediaStoreScanner @Inject constructor(
             FolderEntity(id = id, path = path, name = path.substringAfterLast('/'), songCount = group.size)
         }
         val genres = emptyList<GenreEntity>()
-        db.replaceLibrary(songs = songs, albums = albums, artists = artists, folders = folders, genres = genres)
-        return songs.size
+        db.replaceLibrary(songs = uniqueSongs, albums = albums, artists = artists, folders = folders, genres = genres)
+        return uniqueSongs.size
     }
 
     private fun isAudioDocument(name: String, mimeType: String): Boolean {
