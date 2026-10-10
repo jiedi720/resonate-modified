@@ -230,7 +230,9 @@ class MediaStoreScanner @Inject constructor(
                             relativePath = childParts.dropLast(1).joinToString("/"),
                         )
                     }.getOrNull() ?: continue
-                    if (song.durationMs < minDurationSec * 1000L) continue
+                    // If a provider cannot expose metadata, keep the file indexed rather
+                    // than silently dropping it; known durations still obey the setting.
+                    if (song.durationMs > 0L && song.durationMs < minDurationSec * 1000L) continue
                     songs += song
                     if (songs.size % 50 == 0) onProgress(songs.size)
                 }
@@ -322,6 +324,41 @@ class MediaStoreScanner @Inject constructor(
                 sizeBytes = sizeBytes,
                 mimeType = actualMime,
                 bitrate = meta(android.media.MediaMetadataRetriever.METADATA_KEY_BITRATE).toIntOrNull(),
+                sampleRate = null,
+                isSupported = isMimeSupported(actualMime),
+                relativePath = relativePath,
+                fileName = name,
+                albumName = album,
+                artistName = artist,
+            )
+        } catch (_: Exception) {
+            // Some document providers/codecs reject MediaMetadataRetriever. The
+            // SAF file is still a valid library item, so fall back to its filename.
+            val title = name.substringBeforeLast('.', name)
+            val artist = "<unknown>"
+            val album = "<unknown>"
+            val actualMime = mimeType.ifBlank {
+                android.webkit.MimeTypeMap.getSingleton()
+                    .getMimeTypeFromExtension(name.substringAfterLast('.', "").lowercase())
+                    .orEmpty()
+            }
+            SongEntity(
+                id = stableId(uri.toString()),
+                uri = uri.toString(),
+                title = title,
+                trackNumber = 0,
+                discNumber = 1,
+                year = 0,
+                durationMs = 0L,
+                dateAddedSec = modifiedMillis / 1000L,
+                dateModifiedSec = modifiedMillis / 1000L,
+                albumId = stableId("$artist\\u0000$album"),
+                artistId = stableId(artist),
+                folderId = folderIdOf(folderPath),
+                genreId = null,
+                sizeBytes = sizeBytes,
+                mimeType = actualMime,
+                bitrate = null,
                 sampleRate = null,
                 isSupported = isMimeSupported(actualMime),
                 relativePath = relativePath,
