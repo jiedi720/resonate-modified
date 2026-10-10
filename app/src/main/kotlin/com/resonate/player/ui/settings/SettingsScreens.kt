@@ -457,7 +457,7 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
         )
         listOf(
             Triple("mastered", "已掌握", (prefs.masteredFolderTreeUris + listOfNotNull(prefs.masteredFolderTreeUri)).distinct()),
-            Triple("learning", "未掌握 / 学习中", (prefs.learningInProgressFolderTreeUris + listOfNotNull(prefs.learningInProgressFolderTreeUri)).distinct()),
+            Triple("learning", "未掌握", (prefs.learningInProgressFolderTreeUris + listOfNotNull(prefs.learningInProgressFolderTreeUri)).distinct()),
             Triple("review", "再复习", (prefs.reviewFolderTreeUris + listOfNotNull(prefs.reviewFolderTreeUri)).distinct()),
         ).forEach { (key, label, selectedUris) ->
             Column(modifier = Modifier.fillMaxWidth()) {
