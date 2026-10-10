@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import com.resonate.player.data.db.PlayStatDao
 import com.resonate.player.data.prefs.SortPref
 import com.resonate.player.data.prefs.UserPrefs
 import com.resonate.player.data.prefs.UserPrefsStore
@@ -38,6 +39,7 @@ import kotlinx.coroutines.launch
 class LibraryBrowseViewModel @Inject constructor(
     private val browse: BrowseRepository,
     private val prefsStore: UserPrefsStore,
+    private val playStatDao: PlayStatDao,
 ) : ViewModel() {
 
     private fun <T> Flow<T>.state(initial: T): StateFlow<T> =
@@ -116,6 +118,8 @@ class LibraryBrowseViewModel @Inject constructor(
                     browse.songsInFolder(folderId).map { it.toImmutableList() }
                 }
             }.state(persistentListOf())
+
+    suspend fun playCount(songId: Long): Int = playStatDao.forSong(songId)?.playCount ?: 0
 
     fun openFolder(path: String) {
         _currentFolderPath.value = path
