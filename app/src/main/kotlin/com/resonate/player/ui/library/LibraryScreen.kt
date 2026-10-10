@@ -1,6 +1,12 @@
 package com.resonate.player.ui.library
 
+import android.content.Intent
+import android.provider.DocumentsContract
+import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +30,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.outlined.LibraryMusic
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -41,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -154,8 +163,43 @@ private fun SongsTab(
     val sort by viewModel.songSort.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val scanViewModel: LibraryScanViewModel = hiltViewModel()
+    var contextSong by remember { mutableStateOf<Song?>(null) }
+    var contextPlayCount by remember { mutableStateOf<Int?>(null) }
 
-    // §2.2 multi-select: long-press enters, back exits, selection is by id.
+    val moveFolderLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { destinationTree ->
+        val song = contextSong
+        if (destinationTree != null && song != null) {
+            try {
+                val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                context.contentResolver.takePersistableUriPermission(destinationTree, flags)
+                val sourceUri = Uri.parse(song.uri)
+                val sourceDocumentId = DocumentsContract.getDocumentId(sourceUri)
+                val sourceParentId = sourceDocumentId.substringBeforeLast('/', missingDelimiterValue = "")
+                require(sourceParentId.isNotBlank()) { "Cannot determine the source folder." }
+                val sourceParent = DocumentsContract.buildDocumentUriUsingTree(sourceUri, sourceParentId)
+                val destinationId = DocumentsContract.getTreeDocumentId(destinationTree)
+                val destinationParent = DocumentsContract.buildDocumentUriUsingTree(destinationTree, destinationId)
+                val moved = DocumentsContract.moveDocument(
+                    context.contentResolver, sourceUri, sourceParent, destinationParent
+                )
+                if (moved != null) {
+                    Toast.makeText(context, "Audio file moved.", Toast.LENGTH_SHORT).show()
+                    contextSong = null
+                    scanViewModel.rescan()
+                } else {
+                    Toast.makeText(context, "The file could not be moved.", Toast.LENGTH_LONG).show()
+                }
+            } catch (error: Exception) {
+                Toast.makeText(context, "Move failed: ${error.message ?: "folder access unavailable"}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    // Long press opens the track menu; multi-select remains available from that menu.
     val selectedSongs = remember { androidx.compose.runtime.mutableStateMapOf<Long, Song>() }
     val selectionMode = selectedSongs.isNotEmpty()
     BackHandler(enabled = selectionMode) { selectedSongs.clear() }
@@ -210,7 +254,11 @@ private fun SongsTab(
                             onClick = {
                                 if (selectionMode) toggle(song) else onSongClick(song)
                             },
-                            onLongClick = { toggle(song) },
+                            onLongClick = {
+                                contextSong = song
+                                contextPlayCount = null
+                                scope.launch { contextPlayCount = viewModel.playCount(song.id) }
+                            },
                         )
                     } else {
                         TrackRowPlaceholder()
@@ -223,6 +271,39 @@ private fun SongsTab(
                 modifier = Modifier.align(Alignment.CenterEnd),
             )
         }
+    }
+
+    val menuSong = contextSong
+    if (menuSong != null) {
+        AlertDialog(
+            onDismissRequest = { contextSong = null },
+            title = { Text(menuSong.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+            text = {
+                Column {
+                    Text(
+                        text = "Played ${contextPlayCount?.toString() ?: "…"} times",
+                        style = ResonateTheme.type.body,
+                        color = ResonateTheme.colors.muted,
+                    )
+                    val artist = menuSong.artist.takeUnless { it.equals("<unknown>", ignoreCase = true) }
+                    if (!artist.isNullOrBlank()) {
+                        Text(artist, style = ResonateTheme.type.caption, color = ResonateTheme.colors.muted)
+                    }
+                }
+            },
+            confirmButton = {
+                Row {
+                    TextButton(onClick = {
+                        selectedSongs[menuSong.id] = menuSong
+                        contextSong = null
+                    }) { Text("Select for queue") }
+                    TextButton(onClick = { moveFolderLauncher.launch(null) }) { Text("Move file") }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { contextSong = null }) { Text("Close") }
+            },
+        )
     }
 }
 
