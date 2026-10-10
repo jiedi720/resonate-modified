@@ -34,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -301,7 +302,7 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
         val learningFolderUris = (prefs.learningFolderTreeUris + listOfNotNull(prefs.learningFolderTreeUri)).distinct()
 
         var statusFolderBeingConfigured by remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
-        val statusFolderLauncher = rememberLauncherForActivityResult(
+        val statusFolderLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree()
         ) { treeUri ->
             val settingKey = statusFolderBeingConfigured
