@@ -38,7 +38,7 @@ class MediaStoreScanner @Inject constructor(
     ): Int = withContext(Dispatchers.IO) {
         if (learningFolderTreeUri != null) {
             return@withContext scanSelectedTree(
-                treeUri = Uri.parse(learningFolderTreeUri),
+                treeUris = learningFolderTreeUri.split('\n').filter { it.isNotBlank() }.distinct().map(Uri::parse),
                 minDurationSec = minDurationSec,
                 excludedFolders = excludedFolders,
                 onProgress = onProgress,
@@ -166,24 +166,17 @@ class MediaStoreScanner @Inject constructor(
      * This finds audio files in nested folders even when Android has not indexed them.
      */
     private suspend fun scanSelectedTree(
-        treeUri: Uri,
+        treeUris: List<Uri>,
         minDurationSec: Int,
         excludedFolders: List<String>,
         onProgress: (found: Int) -> Unit,
     ): Int {
-        val rootDocumentId = try {
-            DocumentsContract.getTreeDocumentId(treeUri)
-        } catch (e: Exception) {
-            throw IllegalArgumentException("The selected folder permission is invalid. Please select it again.", e)
-        }
-        val rootPath = sharedStoragePathFromTreeUri(treeUri.toString())
-            ?: throw IllegalArgumentException("Please select a folder in Android internal shared storage.")
         val songs = ArrayList<SongEntity>()
         val visited = HashSet<String>()
         var inspected = 0
 
-        fun walk(documentId: String, relativeParts: List<String>) {
-            if (!visited.add(documentId)) return
+        fun walk(treeUri: Uri, rootPath: String, documentId: String, relativeParts: List<String>) {
+            if (!visited.add(treeUri.toString() + "|" + documentId)) return
             val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, documentId)
             context.contentResolver.query(
                 childrenUri,
@@ -212,7 +205,7 @@ class MediaStoreScanner @Inject constructor(
                     if (excludedFolders.any { path == it || path.startsWith("$it/") }) continue
 
                     if (mime == DocumentsContract.Document.MIME_TYPE_DIR) {
-                        walk(childId, childParts)
+                        walk(treeUri, rootPath, childId, childParts)
                         continue
                     }
                     if (!isAudioDocument(name, mime)) continue
@@ -240,7 +233,16 @@ class MediaStoreScanner @Inject constructor(
             } ?: throw IllegalStateException("Cannot read the selected folder. Please choose it again and grant access.")
         }
 
-        walk(rootDocumentId, emptyList())
+        treeUris.forEach { treeUri ->
+            val rootDocumentId = try {
+                DocumentsContract.getTreeDocumentId(treeUri)
+            } catch (e: Exception) {
+                throw IllegalArgumentException("The selected folder permission is invalid. Please select it again.", e)
+            }
+            val rootPath = sharedStoragePathFromTreeUri(treeUri.toString())
+                ?: throw IllegalArgumentException("Please select a folder in Android internal shared storage.")
+            walk(treeUri, rootPath, rootDocumentId, emptyList())
+        }
         onProgress(songs.size)
 
         val albums = songs.groupBy { it.albumId }.map { (id, group) ->
@@ -267,7 +269,7 @@ class MediaStoreScanner @Inject constructor(
                 runCatching {
                     val documentId = DocumentsContract.getDocumentId(Uri.parse(uri))
                     val relative = documentId.substringAfter(':', "")
-                    if (relative.isBlank()) rootPath else "/storage/emulated/0/$relative".substringBeforeLast('/')
+                    if (relative.isBlank()) "/storage/emulated/0" else "/storage/emulated/0/$relative".substringBeforeLast('/')
                 }.getOrDefault(rootPath)
             }
             FolderEntity(id = id, path = path, name = path.substringAfterLast('/'), songCount = group.size)
