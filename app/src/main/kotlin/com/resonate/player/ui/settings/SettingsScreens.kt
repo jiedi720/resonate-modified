@@ -274,7 +274,8 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
                         // the scanner can read the previous preference and scan the wrong scope.
                         themeViewModel.update {
                             it.copy(
-                                learningFolderTreeUri = treeUri.toString(),
+                                learningFolderTreeUris = (it.learningFolderTreeUris + treeUri.toString()).distinct(),
+                                learningFolderTreeUri = null,
                                 initialFolderSetupCompleted = true,
                             )
                         }.invokeOnCompletion { cause ->
@@ -297,16 +298,17 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
             }
         }
 
+        val learningFolderUris = (prefs.learningFolderTreeUris + listOfNotNull(prefs.learningFolderTreeUri)).distinct()
         Text(
-            text = "LEARNING LIBRARY FOLDER",
+            text = "LEARNING LIBRARY FOLDERS",
             style = ResonateTheme.type.caption,
             color = colors.muted,
             modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp),
         )
         Text(
-            text = prefs.learningFolderTreeUri?.let { uri ->
+            text = learningFolderUris.takeIf { it.isNotEmpty() }?.joinToString("\n") { uri ->
                 treePathOf(android.net.Uri.parse(uri)) ?: "Selected folder (path unavailable)"
-            } ?: "Not set — choose a folder to scan",
+            } ?: "Not set — choose one or more folders to scan",
             style = ResonateTheme.type.body,
             color = colors.bone,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -325,21 +327,20 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
                 tint = colors.accent,
             )
             Text(
-                text = if (prefs.learningFolderTreeUri == null) "Choose learning folder"
-                else "Change learning folder",
+                text = "Add learning folder",
                 style = ResonateTheme.type.title,
                 color = colors.bone,
                 modifier = Modifier.padding(start = 16.dp),
             )
         }
-        if (prefs.learningFolderTreeUri != null) {
+        if (learningFolderUris.isNotEmpty()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
                     .clickable {
                         themeViewModel.update {
-                            it.copy(learningFolderTreeUri = null)
+                            it.copy(learningFolderTreeUris = emptyList(), learningFolderTreeUri = null)
                         }.invokeOnCompletion { cause ->
                             if (cause == null) scanViewModel.rescan()
                         }
@@ -353,7 +354,7 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
                     tint = colors.muted,
                 )
                 Text(
-                    text = "Clear learning folder (stop scanning)",
+                    text = "Clear all learning folders (stop scanning)",
                     style = ResonateTheme.type.title,
                     color = colors.bone,
                     modifier = Modifier.padding(start = 16.dp),
@@ -361,7 +362,7 @@ fun LibrarySettingsScreen(onBack: () -> Unit) {
             }
         }
         Text(
-            text = "Only audio in this folder and its subfolders will be indexed. The first version supports folders in internal shared storage.",
+            text = "Audio in every selected folder and its subfolders will be indexed. Select folders in internal shared storage.",
             style = ResonateTheme.type.caption,
             color = colors.muted,
             modifier = Modifier.padding(16.dp),
