@@ -154,6 +154,7 @@ fun LibraryScreen(
 
 // ---------- Songs ----------
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SongsTab(
     viewModel: LibraryBrowseViewModel,
@@ -875,7 +876,8 @@ private fun CountAndSortBar(
                                     if (selected) {
                                         sort.copy(ascending = !sort.ascending)
                                     } else {
-                                        SortPref(option.field, true)
+                                        // Recent edits are usually the most useful first.
+                                        SortPref(option.field, option.field != SortField.DATE_MODIFIED)
                                     }
                                 )
                             }
