@@ -51,6 +51,8 @@ fun SongEntity.toDomain() = Song(
     isSupported = isSupported,
     artworkUri = artworkUriFor(albumId),
     fileName = fileName,
+    dateAddedSec = dateAddedSec,
+    dateModifiedSec = dateModifiedSec,
 )
 
 fun AlbumEntity.toDomain() = Album(
