@@ -53,6 +53,7 @@ fun SongEntity.toDomain() = Song(
     fileName = fileName,
     dateAddedSec = dateAddedSec,
     dateModifiedSec = dateModifiedSec,
+    sizeBytes = sizeBytes,
 )
 
 fun AlbumEntity.toDomain() = Album(
